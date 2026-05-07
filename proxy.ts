@@ -4,7 +4,7 @@ import { updateSession } from "@/lib/supabase/middleware";
 const protectedRoutes = ["/dashboard", "/curso", "/admin"];
 const authRoutes = ["/login"];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const { response, user } = await updateSession(request);
 
@@ -33,3 +33,4 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: ["/dashboard/:path*", "/curso/:path*", "/admin/:path*", "/login"],
 };
+

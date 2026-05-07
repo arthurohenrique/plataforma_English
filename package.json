@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Plataforma completa de ensino de ingles com landing publica e area do aluno",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
+    "dev:turbo": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
