@@ -3,6 +3,80 @@
 ## Visao geral
 Este documento registra tudo que foi implementado no projeto para permitir continuidade por futuros agentes IA sem perda de contexto.
 
+## Atualizacao consolidada (ate 2026-05-07)
+
+### 1) Pipeline de scraping autorizado (OUP) concluido
+- Scraper Playwright com sessao manual persistida e execucao em modo visual.
+- Crawler com controle de escopo por seed (`allowedDomains`, `allowedPathPrefixes`, profundidade e limite de paginas).
+- Extracao em duas passagens:
+  - estado inicial do DOM;
+  - estado apos interacoes (botoes/tabs/expansoes).
+- Persistencia no Supabase com `run_id`, status por pagina, hash de conteudo e metadados.
+
+Arquivos principais:
+- `scripts/scraper/crawl-ouppages.ts`
+- `scripts/scraper/extract-content.ts`
+- `scripts/scraper/supabase-ingest.ts`
+- `scripts/scraper/types.ts`
+- `scripts/scraper/seeds/oup-intermediate3.json`
+- `docs/scraping-ouppages.md`
+
+### 2) Banco de dados (Supabase) expandido para conteudo didatico
+
+Migrations implementadas:
+- `supabase/migrations/0002_scraping_pipeline.sql`
+  - `scrape_runs`, `scraped_pages`, `scraped_links`.
+- `supabase/migrations/0003_fix_profiles_rls_recursion.sql`
+  - correcao de recursao em policy de `profiles`.
+- `supabase/migrations/0004_scraped_learning_structure.sql`
+  - estrutura normalizada para didatica:
+    - `scraped_sessions`
+    - `scraped_exercises`
+    - `scraped_questions`
+    - `scraped_question_options`
+    - `scraped_question_correct_options`
+    - `scraped_question_answer_keys`
+- `supabase/migrations/0005_scraped_visual_assets.sql`
+  - `scraped_assets` para imagens e icones.
+
+### 3) Integracao real da area do aluno com banco
+- Area do aluno deixou de depender de mock para biblioteca.
+- Leitura centralizada em `lib/supabase/student-biblioteca.ts`.
+- Renderizacao de conteudo didatico (sessoes/exercicios/questoes) com fallback textual.
+- Renderizacao priorizando HTML original raspado para aproximar formato do site de inspiracao.
+
+Arquivos principais:
+- `app/(auth)/dashboard/page.tsx`
+- `app/(auth)/biblioteca/page.tsx`
+- `app/(auth)/biblioteca/[conteudoId]/page.tsx`
+- `app/(auth)/biblioteca/[conteudoId]/[aulaId]/page.tsx`
+- `lib/supabase/student-biblioteca.ts`
+
+### 4) Ordenacao curricular manual para similaridade didatica
+- Criado mapa curricular manual por secao/unidade/item.
+- Frontend passa a seguir ordem oficial do mapa (nao mais ordenacao apenas por URL).
+- Navegacao em 3 niveis na aula: `Secao -> Unidade -> Item`.
+- Breadcrumb e fluxo `anterior/proxima` baseados na sequencia curricular.
+- Itens nao mapeados vao para fallback controlado em `Outros`.
+
+Arquivo:
+- `lib/config/curriculum/oup-intermediate3.json`
+
+### 5) Status atual funcional
+- Scraping textual/estruturado: funcionando.
+- Scraping visual (imagens/icones): funcionando com persistencia em `scraped_assets`.
+- Validacao tipagem/lint: executada apos as alteracoes principais.
+- Rotas antigas de videoaulas (`/curso`) removidas temporariamente; foco atual em `/biblioteca`.
+
+### 6) Pendencias recomendadas (proximos passos)
+- Refinar parser de questoes/opcoes para aumentar fidelidade semantica ao markup original.
+- Mapear 100% dos itens curriculares (reduzir fallback em `Outros`).
+- Exibir assets visuais (`scraped_assets`) diretamente na UI com estrategia de cache.
+- Adicionar testes E2E para:
+  - navegacao curricular;
+  - consistencia de ordem;
+  - idempotencia do scraping.
+
 ## Escopo entregue nesta iteracao
 - Bootstrap completo do projeto Next.js com App Router.
 - Configuracao de TypeScript, Tailwind, lint e scripts NPM.
