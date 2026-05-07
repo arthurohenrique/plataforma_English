@@ -27,7 +27,7 @@ export default async function AuthLayout({
           <p className="font-serifTitle text-xl font-bold text-brandBlue">{siteConfig.siteName}</p>
           <div className="flex items-center gap-3 text-sm">
             <a className="font-semibold text-brandBlue" href="/dashboard">
-              Meu Progresso
+              Biblioteca
             </a>
             <a className="rounded-full border border-brandBlue px-3 py-1 font-semibold text-brandBlue" href="/login">
               Sair

@@ -1,0 +1,16 @@
+{
+  "name": "oup-intermediate3",
+  "allowedDomains": [
+    "elt.oup.com"
+  ],
+  "startUrls": [
+    "https://elt.oup.com/student/englishfile/intermediate3/"
+  ],
+  "allowedPathPrefixes": [
+    "/student/englishfile/intermediate3/"
+  ],
+  "maxDepth": 3,
+  "maxPages": 300,
+  "requestDelayMs": 1200,
+  "concurrency": 1
+}

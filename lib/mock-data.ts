@@ -1,10 +1,10 @@
-import type { Aula, Curso, Modulo, ProgressoAula } from "@/lib/types";
+import type { Aula, Conteudo, Modulo } from "@/lib/types";
 
-export const cursosMock: Curso[] = [
+export const conteudosMock: Conteudo[] = [
   {
-    id: "curso-intermediario",
+    id: "conteudo-intermediario",
     titulo: "English for Professionals",
-    descricao: "Curso focado em comunicacao para contexto corporativo.",
+    descricao: "Biblioteca livre de conhecimento para contexto corporativo.",
     nivel: "intermediario",
     publicado: true,
     ordem: 1,
@@ -14,7 +14,7 @@ export const cursosMock: Curso[] = [
 export const modulosMock: Modulo[] = [
   {
     id: "modulo-1",
-    curso_id: "curso-intermediario",
+    conteudo_id: "conteudo-intermediario",
     titulo: "Unit 1 - Workplace Introductions",
     descricao: "Como se apresentar com confianca em ambientes profissionais.",
     ordem: 1,
@@ -22,7 +22,7 @@ export const modulosMock: Modulo[] = [
   },
   {
     id: "modulo-2",
-    curso_id: "curso-intermediario",
+    conteudo_id: "conteudo-intermediario",
     titulo: "Unit 2 - Meetings and Follow-up",
     descricao: "Estrategias de linguagem para reunioes e follow-ups.",
     ordem: 2,
@@ -55,9 +55,4 @@ export const aulasMock: Aula[] = [
     ordem: 2,
     publicada: true,
   },
-];
-
-export const progressoMock: ProgressoAula[] = [
-  { aula_id: "aula-1", assistida: true, posicao_segundos: 840 },
-  { aula_id: "aula-2", assistida: false, posicao_segundos: 312 },
 ];

@@ -39,9 +39,9 @@ Este documento registra tudo que foi implementado no projeto para permitir conti
 - `app/login/page.tsx`
 - `app/(auth)/layout.tsx`
 - `app/(auth)/dashboard/page.tsx`
-- `app/(auth)/curso/page.tsx`
-- `app/(auth)/curso/[cursoId]/page.tsx`
-- `app/(auth)/curso/[cursoId]/[aulaId]/page.tsx`
+- `app/(auth)/biblioteca/page.tsx`
+- `app/(auth)/biblioteca/[conteudoId]/page.tsx`
+- `app/(auth)/biblioteca/[conteudoId]/[aulaId]/page.tsx`
 - `app/(auth)/(admin)/layout.tsx`
 - `app/(auth)/(admin)/admin/page.tsx`
 - `app/(auth)/(admin)/admin/cursos/page.tsx`
@@ -96,7 +96,7 @@ Este documento registra tudo que foi implementado no projeto para permitir conti
 - `lib/supabase/server.ts`: client server-side com cookies.
 - `lib/supabase/middleware.ts`: sincroniza sessao no middleware.
 - `middleware.ts`:
-  - protege `/dashboard`, `/curso`, `/admin`;
+  - protege `/dashboard`, `/biblioteca`, `/admin`;
   - redireciona nao autenticado para `/login`;
   - redireciona autenticado saindo de `/login` para `/dashboard`;
   - aplica gate de role para `/admin` (via `user_metadata.role`).

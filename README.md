@@ -2,7 +2,7 @@
 
 Plataforma completa de ensino de ingles com:
 - Landing page publica de captacao
-- Area privada do aluno com videoaulas
+- Area privada do aluno com biblioteca de conteudo
 - Base administrativa para professor
 
 ## Stack
@@ -25,8 +25,8 @@ npm run dev
 - `/` Landing page
 - `/login` Login
 - `/dashboard` Dashboard do aluno
-- `/curso` Lista de cursos
-- `/curso/[cursoId]/[aulaId]` Player de aula
+- `/biblioteca` Biblioteca do aluno
+- `/biblioteca/[conteudoId]/[aulaId]` Leitor de conteudo
 - `/admin` Dashboard admin
 
 ## Banco de dados

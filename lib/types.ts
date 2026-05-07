@@ -9,7 +9,7 @@ export type Profile = {
   whatsapp?: string | null;
 };
 
-export type Curso = {
+export type Conteudo = {
   id: string;
   titulo: string;
   descricao: string;
@@ -20,7 +20,7 @@ export type Curso = {
 
 export type Modulo = {
   id: string;
-  curso_id: string;
+  conteudo_id: string;
   titulo: string;
   descricao: string;
   ordem: number;
@@ -38,10 +38,4 @@ export type Aula = {
   materiais_url: string[];
   ordem: number;
   publicada: boolean;
-};
-
-export type ProgressoAula = {
-  aula_id: string;
-  assistida: boolean;
-  posicao_segundos: number;
 };

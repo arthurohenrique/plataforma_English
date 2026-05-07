@@ -8,7 +8,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "scrape:oup": "tsx scripts/scraper/crawl-ouppages.ts --headful",
+    "scrape:oup:headless": "tsx scripts/scraper/crawl-ouppages.ts",
+    "scrape:oup:login": "tsx scripts/scraper/crawl-ouppages.ts --login --headful"
   },
   "repository": {
     "type": "git",
@@ -45,8 +48,10 @@
     "autoprefixer": "^10.5.0",
     "eslint": "^9.39.4",
     "eslint-config-next": "^16.2.4",
+    "playwright": "^1.56.1",
     "postcss": "^8.5.14",
     "tailwindcss": "^3.4.18",
+    "tsx": "^4.20.6",
     "typescript": "^6.0.3"
   }
 }

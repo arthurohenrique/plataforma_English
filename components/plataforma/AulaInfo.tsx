@@ -5,10 +5,10 @@ type AulaInfoProps = {
   aula: Aula;
   anterior?: Aula;
   proxima?: Aula;
-  cursoId: string;
+  conteudoId: string;
 };
 
-export function AulaInfo({ aula, anterior, proxima, cursoId }: AulaInfoProps) {
+export function AulaInfo({ aula, anterior, proxima, conteudoId }: AulaInfoProps) {
   return (
     <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
       <h1 className="text-2xl font-bold text-brandBlue">{aula.titulo}</h1>
@@ -34,14 +34,17 @@ export function AulaInfo({ aula, anterior, proxima, cursoId }: AulaInfoProps) {
       <div className="mt-6 flex flex-wrap gap-3">
         {anterior ? (
           <Link
-            href={`/curso/${cursoId}/${anterior.id}`}
+            href={`/biblioteca/${conteudoId}/${anterior.id}`}
             className="rounded-full border border-brandBlue px-4 py-2 text-sm font-semibold text-brandBlue"
           >
             ← Aula anterior
           </Link>
         ) : null}
         {proxima ? (
-          <Link href={`/curso/${cursoId}/${proxima.id}`} className="rounded-full bg-brandBlue px-4 py-2 text-sm font-semibold text-white">
+          <Link
+            href={`/biblioteca/${conteudoId}/${proxima.id}`}
+            className="rounded-full bg-brandBlue px-4 py-2 text-sm font-semibold text-white"
+          >
             Proxima aula →
           </Link>
         ) : null}

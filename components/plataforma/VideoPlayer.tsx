@@ -5,7 +5,7 @@ import type { Aula } from "@/lib/types";
 
 type VideoPlayerProps = {
   aula: Aula;
-  onProgressSave: (seconds: number, completed: boolean) => void;
+  onProgressSave?: (seconds: number, completed: boolean) => void;
 };
 
 export function VideoPlayer({ aula, onProgressSave }: VideoPlayerProps) {
@@ -39,6 +39,7 @@ export function VideoPlayer({ aula, onProgressSave }: VideoPlayerProps) {
         controls
         className="h-full w-full rounded-xl bg-black"
         onTimeUpdate={(event) => {
+          if (!onProgressSave) return;
           if (debounceRef.current) clearTimeout(debounceRef.current);
           const current = event.currentTarget.currentTime;
           const duration = event.currentTarget.duration || aula.duracao_segundos || 1;

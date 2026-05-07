@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getStudentBiblioteca } from "@/lib/supabase/student-biblioteca";
 import { notFound } from "next/navigation";
 
-export default async function DashboardPage() {
+export default async function BibliotecaPage() {
   const biblioteca = await getStudentBiblioteca();
 
   if (!biblioteca.aulas.length) {
@@ -12,24 +12,20 @@ export default async function DashboardPage() {
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 md:px-8">
       <h1 className="font-serifTitle text-3xl text-brandBlue">Biblioteca</h1>
-      <p className="mt-2 text-sm text-slate-600">Acesse os conteudos disponiveis.</p>
-
       <div className="mt-6 grid gap-4 md:grid-cols-2">
         <article className="rounded-2xl border border-slate-200 bg-white p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-brandBlue">Conteudo</p>
-          <h2 className="mt-2 text-xl font-bold text-brandText">{biblioteca.conteudo.titulo}</h2>
+          <h2 className="text-xl font-bold text-brandText">{biblioteca.conteudo.titulo}</h2>
           <p className="mt-2 text-sm text-slate-600">{biblioteca.conteudo.descricao}</p>
-          <p className="mt-2 text-xs font-semibold text-brandBlue">
-            {biblioteca.modulos.length} secoes • {biblioteca.aulas.length} paginas
-          </p>
+          <p className="mt-2 text-xs font-semibold text-brandBlue">{biblioteca.modulos.length} modulos disponiveis</p>
           <Link
-            href={`/biblioteca/${biblioteca.conteudo.id}`}
-            className="mt-4 inline-flex rounded-full bg-brandBlue px-4 py-2 text-sm font-semibold text-white"
+            href={`/biblioteca/${biblioteca.conteudo.id}/${biblioteca.aulas[0]?.id ?? ""}`}
+            className="mt-4 inline-flex rounded-full bg-brandRed px-4 py-2 text-sm font-semibold text-white"
           >
-            Abrir
+            Abrir conteudo
           </Link>
         </article>
       </div>
     </main>
   );
 }
+
