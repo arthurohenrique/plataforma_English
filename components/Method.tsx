@@ -1,20 +1,26 @@
 import { Container } from "./ui/Container";
 
-const pillars = [
+type Pillar = {
+  title: string;
+  desc: string;
+  Icon: () => React.ReactElement;
+};
+
+const pillars: Pillar[] = [
   {
     title: "Conversação primeiro.",
     desc: "Você fala desde a primeira aula. O foco é ativar o inglês, não decorar regras.",
-    glyph: "💬",
+    Icon: ChatIcon,
   },
   {
     title: "Currículo Oxford.",
     desc: "Estrutura comprovada, materiais oficiais e progressão clara do A1 ao C1.",
-    glyph: "🎓",
+    Icon: CapIcon,
   },
   {
     title: "Feedback contínuo.",
     desc: "Correções no contexto, plano semanal e acompanhamento do seu progresso real.",
-    glyph: "📈",
+    Icon: TrendIcon,
   },
 ];
 
@@ -43,8 +49,8 @@ export function Method() {
               key={p.title}
               className="group rounded-3xl bg-white border border-hairline p-7 sm:p-8 transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_20px_40px_-20px_rgba(10,37,64,0.2)]"
             >
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-foreground/5 text-xl">
-                {p.glyph}
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-foreground/5 text-foreground">
+                <p.Icon />
               </div>
               <h3 className="mt-6 text-[22px] font-semibold tracking-tight text-foreground">
                 {p.title}
@@ -57,5 +63,44 @@ export function Method() {
         </div>
       </Container>
     </section>
+  );
+}
+
+const svgProps = {
+  width: 22,
+  height: 22,
+  viewBox: "0 0 24 24",
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.6,
+  strokeLinecap: "round" as const,
+  strokeLinejoin: "round" as const,
+  "aria-hidden": true,
+};
+
+function ChatIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M4 5h16v11H8l-4 4z" />
+    </svg>
+  );
+}
+
+function CapIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M2 9.5 12 5l10 4.5L12 14z" />
+      <path d="M6 11.5V16c2 1.5 4 2.25 6 2.25S16 17.5 18 16v-4.5" />
+      <path d="M22 9.5V15" />
+    </svg>
+  );
+}
+
+function TrendIcon() {
+  return (
+    <svg {...svgProps}>
+      <path d="M3 17 9 11l4 4 8-8" />
+      <path d="M14 7h7v7" />
+    </svg>
   );
 }

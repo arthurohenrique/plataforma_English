@@ -32,14 +32,22 @@ export function Navbar() {
           ))}
         </nav>
 
-        <a
-          href={whatsappUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex h-9 items-center rounded-full bg-foreground px-4 text-[13px] font-medium text-white hover:bg-[#0f2f4f] transition-colors"
-        >
-          Agendar aula
-        </a>
+        <div className="flex items-center gap-2">
+          <a
+            href="/plataforma"
+            className="hidden sm:inline-flex h-9 items-center rounded-full border border-hairline bg-white px-4 text-[13px] font-medium text-foreground hover:bg-foreground/5 transition-colors"
+          >
+            Entrar
+          </a>
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex h-9 items-center rounded-full bg-foreground px-4 text-[13px] font-medium text-white hover:bg-[#0f2f4f] transition-colors"
+          >
+            Agendar aula
+          </a>
+        </div>
       </Container>
     </header>
   );

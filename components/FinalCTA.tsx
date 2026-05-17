@@ -31,11 +31,11 @@ export function FinalCTA() {
               {site.phoneDisplay}
             </Button>
             <Button
-              href="#metodo"
+              href="/plataforma"
               variant="ghost"
               className="bg-white/5 text-white border-white/15 hover:bg-white/10"
             >
-              Ver método novamente
+              Acessar plataforma
             </Button>
           </div>
         </div>

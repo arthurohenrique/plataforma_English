@@ -35,8 +35,8 @@ export function Hero() {
             >
               Agende sua aula experimental
             </Button>
-            <Button href="#metodo" variant="ghost">
-              Conhecer o método
+            <Button href="/plataforma" variant="ghost">
+              Entrar na plataforma
               <span aria-hidden>›</span>
             </Button>
           </div>

@@ -1,0 +1,115 @@
+/* Platform-scoped design tokens (Apple-inspired, brand-aligned).
+   Loaded once via the platform layout. Scoped under [data-platform]
+   so the landing's tokens stay untouched. */
+
+[data-platform] {
+  --p-bg: #ffffff;
+  --p-surface: #f5f5f7;
+  --p-surface-2: #fbfbfd;
+  --p-elevated: #ffffff;
+
+  --p-fg: #0a2540;
+  --p-fg-soft: #1d1d1f;
+  --p-muted: #6e6e73;
+  --p-muted-2: #86868b;
+
+  --p-hairline: rgba(10, 37, 64, 0.08);
+  --p-hairline-strong: rgba(10, 37, 64, 0.16);
+
+  --p-accent: #c8102e;
+  --p-accent-hover: #a50d25;
+  --p-accent-soft: #fde8eb;
+  --p-gold: #d4a017;
+  --p-blue: #0a2540;
+  --p-success: #1e9e63;
+  --p-warning: #d4a017;
+  --p-error: #c8102e;
+
+  background: var(--p-bg);
+  color: var(--p-fg);
+  min-height: 100dvh;
+}
+
+[data-platform] *,
+[data-platform] *::before,
+[data-platform] *::after {
+  box-sizing: border-box;
+}
+
+[data-platform] ::selection {
+  background: var(--p-accent);
+  color: #fff;
+}
+
+[data-platform] .p-hairline {
+  height: 1px;
+  background: var(--p-hairline);
+  width: 100%;
+}
+
+[data-platform] .p-card {
+  background: var(--p-elevated);
+  border: 1px solid var(--p-hairline);
+  border-radius: 20px;
+}
+
+[data-platform] .p-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--p-surface);
+  color: var(--p-muted);
+  border: 1px solid var(--p-hairline);
+}
+
+[data-platform] .p-fade-in {
+  animation: pFadeIn 0.45s ease both;
+}
+@keyframes pFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Skeleton shimmer */
+[data-platform] .p-skel {
+  position: relative;
+  overflow: hidden;
+  background: var(--p-surface);
+  border-radius: 10px;
+}
+[data-platform] .p-skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.65),
+    transparent
+  );
+  animation: pShimmer 1.4s ease-in-out infinite;
+}
+@keyframes pShimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Subtle radial background used on auth/marketing surfaces */
+[data-platform] .p-bg-radial {
+  background:
+    radial-gradient(900px 500px at 50% -10%, rgba(10, 37, 64, 0.06), transparent 60%),
+    radial-gradient(700px 400px at 100% 0%, rgba(200, 16, 46, 0.05), transparent 60%),
+    var(--p-bg);
+}
