@@ -1,22 +1,91 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
 :root {
-  color-scheme: light;
+  --background: #ffffff;
+  --surface: #f5f5f7;
+  --surface-2: #fbfbfd;
+  --foreground: #0a2540;
+  --foreground-soft: #1d1d1f;
+  --muted: #6e6e73;
+  --hairline: rgba(10, 37, 64, 0.08);
+
+  --accent: #c8102e;
+  --accent-hover: #a50d25;
+  --accent-soft: #fde8eb;
+  --gold: #d4a017;
+  --blue-deep: #0a2540;
 }
 
-* {
-  box-sizing: border-box;
+@theme inline {
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-foreground: var(--foreground);
+  --color-foreground-soft: var(--foreground-soft);
+  --color-muted: var(--muted);
+  --color-hairline: var(--hairline);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-gold: var(--gold);
+  --color-blue-deep: var(--blue-deep);
+  --font-sans: var(--font-sans-display);
 }
 
 html,
 body {
-  margin: 0;
-  padding: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans-display), -apple-system, BlinkMacSystemFont,
+    "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-body {
-  background: #ffffff;
-  color: #2c3e50;
+::selection {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Apple-style hairline divider */
+.hairline {
+  height: 1px;
+  background: var(--hairline);
+  width: 100%;
+}
+
+/* Subtle radial gradient used on hero/CTA */
+.bg-radial-soft {
+  background:
+    radial-gradient(1200px 600px at 50% -10%, rgba(10, 37, 64, 0.06), transparent 60%),
+    radial-gradient(800px 400px at 100% 0%, rgba(200, 16, 46, 0.05), transparent 60%),
+    #ffffff;
+}
+
+.bg-radial-deep {
+  background:
+    radial-gradient(900px 500px at 20% 0%, rgba(255, 255, 255, 0.08), transparent 60%),
+    radial-gradient(700px 400px at 100% 100%, rgba(212, 160, 23, 0.12), transparent 60%),
+    var(--blue-deep);
+}
+
+/* Smooth scroll for anchor nav */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Reveal-on-scroll-ish: simple fade for static SSR */
+.fade-in {
+  animation: fadeIn 0.7s ease both;
+}
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
