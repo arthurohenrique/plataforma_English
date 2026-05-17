@@ -14,8 +14,14 @@ export { TeacherDashboard } from "./screens/teacher/TeacherDashboard";
 export { TeacherArea } from "./screens/teacher/TeacherArea";
 export { TeacherClasses } from "./screens/teacher/TeacherClasses";
 
+export { FlashcardsList } from "./screens/flashcards/FlashcardsList";
+export { DeckOverview } from "./screens/flashcards/DeckOverview";
+export { DeckStudy } from "./screens/flashcards/DeckStudy";
+export { DeckCards } from "./screens/flashcards/DeckCards";
+
 export { platformRoutes } from "./routes";
 export { AREAS, findArea } from "./areas";
+export { reschedule, isDue, countDue, dueCards } from "./scheduler";
 
 export type {
   Role,
@@ -27,4 +33,8 @@ export type {
   Attempt,
   AttemptResult,
   ContentState,
+  Deck,
+  Flashcard,
+  Grade,
+  OwnerScope,
 } from "./types";

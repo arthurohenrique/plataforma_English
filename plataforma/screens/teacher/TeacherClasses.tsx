@@ -31,18 +31,18 @@ function Inner() {
 
   return (
     <div className="p-fade-in">
-      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div className="max-w-2xl">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[color:var(--p-accent)]">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-2xl min-w-0">
+          <p className="text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.18em] text-[color:var(--p-accent)]">
             Cronologia
           </p>
-          <h1 className="mt-3 text-[36px] sm:text-[44px] leading-[1.05] font-semibold tracking-[-0.03em]">
+          <h1 className="mt-3 text-[clamp(1.75rem,5.5vw,2.75rem)] leading-[1.05] font-semibold tracking-[-0.03em]">
             Aulas gravadas.
           </h1>
-          <p className="mt-3 text-[16px] leading-relaxed text-[color:var(--p-muted)]">
+          <p className="mt-3 text-[14px] sm:text-[16px] leading-relaxed text-[color:var(--p-muted)]">
             Crie checkpoints e organize a ordem em que o aluno deve assistir.
           </p>
-          <div className="mt-4">
+          <div className="mt-3 sm:mt-4">
             <Tag tone="neutral">
               {content.checkpoints.length}{" "}
               {content.checkpoints.length === 1 ? "checkpoint" : "checkpoints"}
@@ -51,7 +51,7 @@ function Inner() {
         </div>
 
         {!creating && (
-          <Button onClick={() => setCreating(true)}>
+          <Button onClick={() => setCreating(true)} className="self-start sm:self-end">
             <Icon name="plus" size={14} />
             Novo checkpoint
           </Button>

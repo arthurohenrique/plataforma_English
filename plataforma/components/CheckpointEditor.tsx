@@ -44,7 +44,7 @@ export function CheckpointEditor({
   }
 
   return (
-    <div className="p-card p-7 sm:p-8 p-fade-in">
+    <div className="p-card p-5 sm:p-7 lg:p-8 p-fade-in">
       <Tag tone="accent">{existing ? "Editar checkpoint" : "Novo checkpoint"}</Tag>
       <h3 className="mt-3 text-[20px] font-semibold tracking-tight">
         Detalhes da aula
@@ -96,10 +96,12 @@ export function CheckpointEditor({
         <p className="mt-4 text-[13px] text-[color:var(--p-accent)]">{err}</p>
       )}
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        <Button onClick={save}>Salvar aula</Button>
+      <div className="mt-6 flex flex-col sm:flex-row flex-wrap gap-2">
+        <Button onClick={save} className="w-full sm:w-auto">
+          Salvar aula
+        </Button>
         {onDone && (
-          <Button variant="ghost" onClick={onDone}>
+          <Button variant="ghost" onClick={onDone} className="w-full sm:w-auto">
             Cancelar
           </Button>
         )}

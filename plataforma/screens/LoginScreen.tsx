@@ -39,23 +39,29 @@ export function LoginScreen() {
   }
 
   return (
-    <div className="p-bg-radial min-h-[100dvh] flex items-center justify-center px-5 py-12">
+    <div
+      className="p-bg-radial min-h-[100dvh] flex items-center justify-center px-4 sm:px-6 py-10 sm:py-12"
+      style={{
+        paddingTop: "calc(2.5rem + env(safe-area-inset-top))",
+        paddingBottom: "calc(2.5rem + env(safe-area-inset-bottom))",
+      }}
+    >
       <div className="w-full max-w-md p-fade-in">
         <div className="flex items-center gap-2 justify-center">
           <span className="inline-block h-7 w-7 rounded-full bg-[color:var(--p-fg)]" />
-          <span className="text-[16px] font-semibold tracking-tight">
+          <span className="text-[15px] sm:text-[16px] font-semibold tracking-tight">
             Oxford Particular
           </span>
         </div>
 
-        <h1 className="mt-8 text-center text-[40px] sm:text-[48px] leading-[1.05] font-semibold tracking-[-0.03em]">
+        <h1 className="mt-6 sm:mt-8 text-center text-[clamp(2rem,7vw,3rem)] leading-[1.05] font-semibold tracking-[-0.03em]">
           Bem-vindo.
         </h1>
-        <p className="mt-3 text-center text-[16px] leading-relaxed text-[color:var(--p-muted)]">
+        <p className="mt-3 text-center text-[14px] sm:text-[16px] leading-relaxed text-[color:var(--p-muted)]">
           Entre como aluno ou professor para acessar a plataforma.
         </p>
 
-        <form onSubmit={submit} className="mt-10 p-card p-7 sm:p-8 space-y-5">
+        <form onSubmit={submit} className="mt-8 sm:mt-10 p-card p-5 sm:p-7 lg:p-8 space-y-5">
           <Field label="Nome de usuário">
             <TextInput
               autoFocus

@@ -29,28 +29,28 @@ const faqs = [
 
 export function FAQ() {
   return (
-    <section id="faq" className="bg-surface py-24 sm:py-32">
+    <section id="faq" className="bg-surface py-16 sm:py-24 lg:py-32">
       <Container>
         <div className="max-w-2xl">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-accent">
+          <p className="text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.18em] text-accent">
             Dúvidas frequentes
           </p>
-          <h2 className="mt-4 text-[36px] sm:text-[52px] leading-[1.05] font-semibold tracking-[-0.03em] text-foreground">
+          <h2 className="mt-4 text-[clamp(1.875rem,5.5vw,3.25rem)] leading-[1.05] font-semibold tracking-[-0.03em] text-foreground">
             Tudo o que você
             <br />
             <span className="text-muted">precisa saber.</span>
           </h2>
         </div>
 
-        <div className="mt-12 mx-auto max-w-3xl divide-y divide-hairline rounded-3xl border border-hairline bg-white">
+        <div className="mt-8 sm:mt-12 mx-auto max-w-3xl divide-y divide-hairline rounded-2xl sm:rounded-3xl border border-hairline bg-white">
           {faqs.map((f, i) => (
             <details
               key={f.q}
-              className="group px-6 sm:px-8 py-5 [&_summary::-webkit-details-marker]:hidden"
+              className="group px-5 sm:px-8 py-4 sm:py-5 [&_summary::-webkit-details-marker]:hidden"
               open={i === 0}
             >
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-6">
-                <span className="text-[17px] font-medium tracking-tight text-foreground">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 sm:gap-6">
+                <span className="text-[15px] sm:text-[17px] font-medium tracking-tight text-foreground">
                   {f.q}
                 </span>
                 <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-hairline text-muted transition-transform group-open:rotate-45">
@@ -68,7 +68,7 @@ export function FAQ() {
                   </svg>
                 </span>
               </summary>
-              <p className="mt-4 text-[15px] leading-relaxed text-muted">
+              <p className="mt-3 sm:mt-4 text-[14px] sm:text-[15px] leading-relaxed text-muted">
                 {f.a}
               </p>
             </details>

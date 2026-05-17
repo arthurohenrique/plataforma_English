@@ -53,7 +53,7 @@ function Inner() {
     >
       <header className="max-w-3xl">
         <div
-          className="inline-flex items-center justify-center rounded-2xl h-12 w-12"
+          className="inline-flex items-center justify-center rounded-2xl h-11 w-11 sm:h-12 sm:w-12"
           style={{
             background: `${area.accent}14`,
             color: area.accent,
@@ -61,13 +61,13 @@ function Inner() {
         >
           <Icon name={area.icon} size={22} />
         </div>
-        <h1 className="mt-5 text-[36px] sm:text-[44px] leading-[1.05] font-semibold tracking-[-0.03em]">
+        <h1 className="mt-4 sm:mt-5 text-[clamp(1.75rem,5.5vw,2.75rem)] leading-[1.05] font-semibold tracking-[-0.03em]">
           {area.title}
         </h1>
-        <p className="mt-3 text-[16px] leading-relaxed text-[color:var(--p-muted)]">
+        <p className="mt-3 text-[14px] sm:text-[16px] leading-relaxed text-[color:var(--p-muted)]">
           {area.description}
         </p>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-3 sm:mt-4 flex flex-wrap gap-2">
           <Tag tone="neutral">
             {questions.length}{" "}
             {questions.length === 1 ? "desafio" : "desafios"}
@@ -75,7 +75,7 @@ function Inner() {
         </div>
       </header>
 
-      <section className="mt-10 space-y-4">
+      <section className="mt-8 sm:mt-10 space-y-3 sm:space-y-4">
         {questions.length === 0 ? (
           <EmptyState
             icon="inbox"

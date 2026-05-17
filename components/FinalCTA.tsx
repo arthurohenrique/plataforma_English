@@ -4,28 +4,29 @@ import { whatsappUrl, site } from "@/lib/site";
 
 export function FinalCTA() {
   return (
-    <section id="agendar" className="bg-background py-24 sm:py-32">
+    <section id="agendar" className="bg-background py-16 sm:py-24 lg:py-32">
       <Container>
-        <div className="relative overflow-hidden rounded-[36px] bg-radial-deep px-8 py-16 sm:px-16 sm:py-24 text-center">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-gold">
+        <div className="relative overflow-hidden rounded-3xl sm:rounded-[36px] bg-radial-deep px-6 sm:px-12 lg:px-16 py-12 sm:py-20 lg:py-24 text-center">
+          <p className="text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.18em] text-gold">
             Comece agora
           </p>
-          <h2 className="mt-4 text-[40px] sm:text-[64px] leading-[1.02] font-semibold tracking-[-0.035em] text-white">
+          <h2 className="mt-4 text-[clamp(2rem,7vw,4rem)] leading-[1.02] font-semibold tracking-[-0.035em] text-white">
             Agende sua aula
             <br />
             <span className="text-white/60">experimental.</span>
           </h2>
-          <p className="mx-auto mt-5 max-w-xl text-[17px] leading-relaxed text-white/70">
+          <p className="mx-auto mt-4 sm:mt-5 max-w-xl text-[15px] sm:text-[17px] leading-relaxed text-white/70">
             Sem custo, sem compromisso. Em 50 minutos você sente o método —
             e descobre o quanto pode evoluir.
           </p>
 
-          <div className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
+          <div className="mt-8 sm:mt-9 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3">
             <Button
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
               variant="whatsapp"
+              className="w-full sm:w-auto"
             >
               <WhatsAppIcon />
               {site.phoneDisplay}
@@ -33,7 +34,7 @@ export function FinalCTA() {
             <Button
               href="/plataforma"
               variant="ghost"
-              className="bg-white/5 text-white border-white/15 hover:bg-white/10"
+              className="w-full sm:w-auto bg-white/5 text-white border-white/15 hover:bg-white/10"
             >
               Acessar plataforma
             </Button>

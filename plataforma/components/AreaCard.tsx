@@ -23,22 +23,22 @@ export function AreaCard({
   return (
     <Link
       href={href}
-      className="group p-card p-7 sm:p-8 transition-all duration-300 hover:-translate-y-[2px] hover:shadow-[0_20px_40px_-20px_rgba(10,37,64,0.18)]"
+      className="group p-card p-5 sm:p-7 lg:p-8 transition-all duration-300 hover:-translate-y-[2px] hover:shadow-[0_20px_40px_-20px_rgba(10,37,64,0.18)]"
     >
       <div
-        className="flex h-12 w-12 items-center justify-center rounded-2xl"
+        className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-2xl"
         style={{
           background: `${area.accent}14`,
           color: area.accent,
         }}
       >
-        <Icon name={area.icon} size={22} />
+        <Icon name={area.icon} size={20} />
       </div>
 
-      <h3 className="mt-6 text-[20px] font-semibold tracking-tight text-[color:var(--p-fg)]">
+      <h3 className="mt-4 sm:mt-6 text-[18px] sm:text-[20px] font-semibold tracking-tight text-[color:var(--p-fg)]">
         {area.title}
       </h3>
-      <p className="mt-2 text-[14px] leading-relaxed text-[color:var(--p-muted)]">
+      <p className="mt-1.5 sm:mt-2 text-[13px] sm:text-[14px] leading-relaxed text-[color:var(--p-muted)]">
         {area.description}
       </p>
 

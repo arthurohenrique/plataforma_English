@@ -15,9 +15,14 @@ import type {
   AuthState,
   Checkpoint,
   ContentState,
+  Deck,
+  Flashcard,
+  Grade,
+  OwnerScope,
   Question,
   Role,
 } from "../types";
+import { reschedule } from "../scheduler";
 import {
   loadAuth,
   loadContent,
@@ -48,6 +53,15 @@ type Ctx = {
   recordAttempt: (questionId: string, result: AttemptResult) => void;
   markCheckpointWatched: (id: string) => void;
 
+  // Flashcards / spaced repetition
+  upsertDeck: (deck: Deck) => void;
+  removeDeck: (id: string) => void;
+  upsertFlashcard: (card: Flashcard) => void;
+  removeFlashcard: (id: string) => void;
+  reviewFlashcard: (id: string, grade: Grade) => void;
+  decksByScope: (scope: OwnerScope) => Deck[];
+  cardsByDeck: (deckId: string) => Flashcard[];
+
   resetAllContent: () => void;
 };
 
@@ -67,7 +81,17 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setAuth(loadAuth());
     const stored = loadContent();
-    if (stored) setContent(stored);
+    if (stored) {
+      // Forward-compat: ensure new fields exist if loading older state.
+      setContent({
+        questions: stored.questions ?? SEED_CONTENT.questions,
+        checkpoints: stored.checkpoints ?? SEED_CONTENT.checkpoints,
+        attempts: stored.attempts ?? [],
+        watchedCheckpointIds: stored.watchedCheckpointIds ?? [],
+        decks: stored.decks ?? SEED_CONTENT.decks,
+        flashcards: stored.flashcards ?? SEED_CONTENT.flashcards,
+      });
+    }
     setReady(true);
   }, []);
 
@@ -187,6 +211,64 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const upsertDeck = useCallback((deck: Deck) => {
+    setContent((prev) => {
+      const exists = prev.decks.some((d) => d.id === deck.id);
+      const decks = exists
+        ? prev.decks.map((d) => (d.id === deck.id ? deck : d))
+        : [...prev.decks, { ...deck, id: deck.id || uid("d") }];
+      return { ...prev, decks };
+    });
+  }, []);
+
+  const removeDeck = useCallback((id: string) => {
+    setContent((prev) => ({
+      ...prev,
+      decks: prev.decks.filter((d) => d.id !== id),
+      flashcards: prev.flashcards.filter((c) => c.deckId !== id),
+    }));
+  }, []);
+
+  const upsertFlashcard = useCallback((card: Flashcard) => {
+    setContent((prev) => {
+      const exists = prev.flashcards.some((c) => c.id === card.id);
+      const flashcards = exists
+        ? prev.flashcards.map((c) => (c.id === card.id ? card : c))
+        : [...prev.flashcards, { ...card, id: card.id || uid("fc") }];
+      return { ...prev, flashcards };
+    });
+  }, []);
+
+  const removeFlashcard = useCallback((id: string) => {
+    setContent((prev) => ({
+      ...prev,
+      flashcards: prev.flashcards.filter((c) => c.id !== id),
+    }));
+  }, []);
+
+  const reviewFlashcard = useCallback((id: string, grade: Grade) => {
+    setContent((prev) => ({
+      ...prev,
+      flashcards: prev.flashcards.map((c) =>
+        c.id === id ? reschedule(c, grade) : c,
+      ),
+    }));
+  }, []);
+
+  const decksByScope = useCallback(
+    (scope: OwnerScope): Deck[] =>
+      content.decks
+        .filter((d) => d.ownerScope === scope)
+        .sort((a, b) => b.createdAt - a.createdAt),
+    [content.decks],
+  );
+
+  const cardsByDeck = useCallback(
+    (deckId: string): Flashcard[] =>
+      content.flashcards.filter((c) => c.deckId === deckId),
+    [content.flashcards],
+  );
+
   const resetAllContent = useCallback(() => {
     setContent(SEED_CONTENT);
   }, []);
@@ -205,6 +287,13 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
       reorderCheckpoint,
       recordAttempt,
       markCheckpointWatched,
+      upsertDeck,
+      removeDeck,
+      upsertFlashcard,
+      removeFlashcard,
+      reviewFlashcard,
+      decksByScope,
+      cardsByDeck,
       resetAllContent,
     }),
     [
@@ -220,6 +309,13 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
       reorderCheckpoint,
       recordAttempt,
       markCheckpointWatched,
+      upsertDeck,
+      removeDeck,
+      upsertFlashcard,
+      removeFlashcard,
+      reviewFlashcard,
+      decksByScope,
+      cardsByDeck,
       resetAllContent,
     ],
   );

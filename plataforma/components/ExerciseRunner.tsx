@@ -69,18 +69,19 @@ export function ExerciseRunner({ question }: { question: Question }) {
   }
 
   return (
-    <article className="p-card p-7 sm:p-8 p-fade-in">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-[20px] font-semibold tracking-tight text-[color:var(--p-fg)]">
+    <article className="p-card p-5 sm:p-7 lg:p-8 p-fade-in">
+      <div className="flex items-start justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h3 className="text-[17px] sm:text-[20px] font-semibold tracking-tight text-[color:var(--p-fg)] break-words">
             {question.title}
           </h3>
-          <p className="mt-2 text-[15px] leading-relaxed text-[color:var(--p-muted)]">
+          <p className="mt-2 text-[14px] sm:text-[15px] leading-relaxed text-[color:var(--p-muted)]">
             {question.statement}
           </p>
         </div>
         {prior && (
           <Tag
+            className="shrink-0"
             tone={
               prior.result === "correct"
                 ? "success"
@@ -182,14 +183,16 @@ export function ExerciseRunner({ question }: { question: Question }) {
         </div>
       )}
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <Button onClick={check}>Verificar</Button>
+      <div className="mt-6 flex flex-wrap items-stretch sm:items-center gap-2">
+        <Button onClick={check} className="flex-1 sm:flex-none">
+          Verificar
+        </Button>
         {question.kind === "open" && (
-          <Button variant="ghost" onClick={reveal}>
+          <Button variant="ghost" onClick={reveal} className="flex-1 sm:flex-none">
             Ver resposta
           </Button>
         )}
-        <Button variant="ghost" onClick={reset}>
+        <Button variant="ghost" onClick={reset} className="flex-1 sm:flex-none">
           Limpar
         </Button>
       </div>

@@ -18,7 +18,12 @@ export function PlatformShell({
       <Sidebar />
       <div className="flex-1 min-w-0 flex flex-col">
         <Topbar title={title} back={back} />
-        <main className="flex-1 px-5 sm:px-8 py-8 sm:py-10">{children}</main>
+        <main
+          className="flex-1 px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-10"
+          style={{ paddingBottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}
+        >
+          <div className="mx-auto w-full max-w-6xl">{children}</div>
+        </main>
       </div>
     </div>
   );

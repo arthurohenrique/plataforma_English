@@ -29,30 +29,30 @@ const items = [
 
 export function Benefits() {
   return (
-    <section id="beneficios" className="bg-background py-24 sm:py-32">
+    <section id="beneficios" className="bg-background py-16 sm:py-24 lg:py-32">
       <Container>
         <div className="max-w-2xl">
-          <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-accent">
+          <p className="text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.18em] text-accent">
             Benefícios
           </p>
-          <h2 className="mt-4 text-[36px] sm:text-[52px] leading-[1.05] font-semibold tracking-[-0.03em] text-foreground">
+          <h2 className="mt-4 text-[clamp(1.875rem,5.5vw,3.25rem)] leading-[1.05] font-semibold tracking-[-0.03em] text-foreground">
             Inglês que cabe
             <br />
             <span className="text-muted">na sua vida.</span>
           </h2>
         </div>
 
-        <div className="mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-hairline rounded-3xl overflow-hidden border border-hairline">
+        <div className="mt-10 sm:mt-14 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-px bg-hairline rounded-2xl sm:rounded-3xl overflow-hidden border border-hairline">
           {items.map((item) => (
             <div
               key={item.title}
-              className="bg-white p-7 sm:p-9 transition-colors hover:bg-surface-2"
+              className="bg-white p-6 sm:p-7 lg:p-9 transition-colors hover:bg-surface-2"
             >
               <CheckIcon />
-              <h3 className="mt-5 text-[19px] font-semibold tracking-tight text-foreground">
+              <h3 className="mt-4 sm:mt-5 text-[17px] sm:text-[19px] font-semibold tracking-tight text-foreground">
                 {item.title}
               </h3>
-              <p className="mt-2 text-[15px] leading-relaxed text-muted">
+              <p className="mt-1.5 sm:mt-2 text-[14px] sm:text-[15px] leading-relaxed text-muted">
                 {item.desc}
               </p>
             </div>

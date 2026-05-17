@@ -29,6 +29,12 @@ function getNav(role: "aluno" | "professor"): NavItem[] {
       icon: "play",
       match: (p) => p.startsWith(base.aulas),
     },
+    {
+      href: base.flashcards,
+      label: "Flashcards",
+      icon: "book",
+      match: (p) => p.startsWith(base.flashcards),
+    },
   ];
 }
 
@@ -84,11 +90,15 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="mt-auto p-4">
+      <div
+        className="mt-auto p-4"
+        style={{ paddingBottom: "calc(1rem + env(safe-area-inset-bottom))" }}
+      >
         <button
           onClick={logout}
           className="w-full inline-flex items-center justify-center gap-2 rounded-full border border-[color:var(--p-hairline)] bg-white px-4 h-9 text-[13px] font-medium text-[color:var(--p-muted)] hover:text-[color:var(--p-fg)] transition-colors"
         >
+          <Icon name="logout" size={14} />
           Sair
         </button>
       </div>

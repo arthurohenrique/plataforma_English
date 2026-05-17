@@ -59,10 +59,10 @@ function Inner() {
       title={`${area.title} · Gerenciar`}
       back={{ href: platformRoutes.professor.home, label: "Painel" }}
     >
-      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-        <div className="max-w-2xl">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-2xl min-w-0">
           <div
-            className="inline-flex items-center justify-center rounded-2xl h-12 w-12"
+            className="inline-flex items-center justify-center rounded-2xl h-11 w-11 sm:h-12 sm:w-12"
             style={{
               background: `${area.accent}14`,
               color: area.accent,
@@ -70,16 +70,16 @@ function Inner() {
           >
             <Icon name={area.icon} size={22} />
           </div>
-          <h1 className="mt-5 text-[36px] sm:text-[44px] leading-[1.05] font-semibold tracking-[-0.03em]">
+          <h1 className="mt-4 sm:mt-5 text-[clamp(1.75rem,5.5vw,2.75rem)] leading-[1.05] font-semibold tracking-[-0.03em]">
             {area.title}
           </h1>
-          <p className="mt-3 text-[16px] leading-relaxed text-[color:var(--p-muted)]">
+          <p className="mt-3 text-[14px] sm:text-[16px] leading-relaxed text-[color:var(--p-muted)]">
             Crie e edite os desafios que aparecem para o aluno.
           </p>
         </div>
 
         {!creating && !editing && (
-          <Button onClick={() => setCreating(true)}>
+          <Button onClick={() => setCreating(true)} className="self-start sm:self-end">
             <Icon name="plus" size={14} />
             Nova questão
           </Button>
@@ -115,15 +115,15 @@ function Inner() {
           />
         ) : (
           questions.map((q) => (
-            <div key={q.id} className="p-card p-6">
-              <div className="flex items-start justify-between gap-4">
+            <div key={q.id} className="p-card p-5 sm:p-6">
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 flex-wrap">
                     <Tag tone={q.kind === "multiple-choice" ? "accent" : "neutral"}>
                       {q.kind === "multiple-choice" ? "Múltipla escolha" : "Aberta"}
                     </Tag>
                   </div>
-                  <h3 className="mt-3 text-[17px] font-semibold tracking-tight">
+                  <h3 className="mt-3 text-[16px] sm:text-[17px] font-semibold tracking-tight break-words">
                     {q.title}
                   </h3>
                   <p className="mt-1.5 text-[13px] text-[color:var(--p-muted)] line-clamp-2">

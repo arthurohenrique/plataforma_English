@@ -1,4 +1,10 @@
-import type { Checkpoint, ContentState, Question } from "../types";
+import type {
+  Checkpoint,
+  ContentState,
+  Deck,
+  Flashcard,
+  Question,
+} from "../types";
 
 const now = () => Date.now();
 
@@ -79,9 +85,70 @@ const checkpoints: Checkpoint[] = [
   },
 ];
 
+const decks: Deck[] = [
+  {
+    id: "d-teacher-essentials",
+    ownerScope: "professor",
+    ownerUsername: "Seeds",
+    name: "Essential Verbs (A1)",
+    description: "Verbos do dia a dia em inglês — base para qualquer conversa.",
+    accent: "#C8102E",
+    createdAt: now(),
+  },
+];
+
+const flashcards: Flashcard[] = [
+  {
+    id: "fc-1",
+    deckId: "d-teacher-essentials",
+    front: "to wake up",
+    back: "acordar",
+    interval: 0,
+    repetitions: 0,
+    dueAt: now(),
+    lastReviewedAt: null,
+    createdAt: now(),
+  },
+  {
+    id: "fc-2",
+    deckId: "d-teacher-essentials",
+    front: "to bring",
+    back: "trazer",
+    interval: 0,
+    repetitions: 0,
+    dueAt: now(),
+    lastReviewedAt: null,
+    createdAt: now(),
+  },
+  {
+    id: "fc-3",
+    deckId: "d-teacher-essentials",
+    front: "to take",
+    back: "pegar / levar",
+    interval: 0,
+    repetitions: 0,
+    dueAt: now(),
+    lastReviewedAt: null,
+    createdAt: now(),
+  },
+  {
+    id: "fc-4",
+    deckId: "d-teacher-essentials",
+    front: "to keep",
+    back: "manter / guardar",
+    interval: 0,
+    repetitions: 0,
+    dueAt: now(),
+    lastReviewedAt: null,
+    createdAt: now(),
+  },
+];
+
 export const SEED_CONTENT: ContentState = {
   questions,
   checkpoints,
   attempts: [],
   watchedCheckpointIds: [],
+  decks,
+  flashcards,
 };

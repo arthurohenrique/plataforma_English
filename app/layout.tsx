@@ -14,6 +14,13 @@ export const metadata: Metadata = {
     "Aulas de inglês online, individuais, com método Oxford comprovado. Horários flexíveis, foco em conversação e resultados reais.",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
+  themeColor: "#ffffff",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{

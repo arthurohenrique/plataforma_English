@@ -78,7 +78,7 @@ export function ExerciseEditor({
   }
 
   return (
-    <div className="p-card p-7 sm:p-8 p-fade-in">
+    <div className="p-card p-5 sm:p-7 lg:p-8 p-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <Tag tone="accent">
@@ -184,10 +184,12 @@ export function ExerciseEditor({
         <p className="mt-4 text-[13px] text-[color:var(--p-accent)]">{err}</p>
       )}
 
-      <div className="mt-6 flex flex-wrap gap-2">
-        <Button onClick={save}>Salvar questão</Button>
+      <div className="mt-6 flex flex-col sm:flex-row flex-wrap gap-2">
+        <Button onClick={save} className="w-full sm:w-auto">
+          Salvar questão
+        </Button>
         {onDone && (
-          <Button variant="ghost" onClick={onDone}>
+          <Button variant="ghost" onClick={onDone} className="w-full sm:w-auto">
             Cancelar
           </Button>
         )}
