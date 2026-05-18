@@ -4,7 +4,10 @@ import { whatsappUrl } from "@/lib/site";
 
 export function Hero() {
   return (
-    <section id="top" className="bg-radial-soft pt-16 sm:pt-24 lg:pt-28 pb-16 sm:pb-24 lg:pb-28">
+    <section
+      id="top"
+      className="bg-radial-soft pt-16 sm:pt-24 lg:pt-28 pb-16 sm:pb-24 lg:pb-28 overflow-hidden"
+    >
       <Container className="text-center">
         <div className="fade-in">
           <span className="inline-flex items-center gap-2 rounded-full border border-hairline bg-white px-3 py-1 text-[11px] sm:text-[12px] font-medium text-muted">

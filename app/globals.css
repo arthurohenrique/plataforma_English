@@ -41,6 +41,10 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  /* Prevent horizontal scroll from decorative blurs that overhang their
+     containers. `clip` is preferred over `hidden` because it doesn't create
+     a new scroll context, so `position: sticky` (Navbar) keeps working. */
+  overflow-x: clip;
 }
 
 ::selection {

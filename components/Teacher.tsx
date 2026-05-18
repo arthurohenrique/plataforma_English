@@ -3,7 +3,10 @@ import { Container } from "./ui/Container";
 
 export function Teacher() {
   return (
-    <section id="professor" className="bg-surface py-16 sm:py-24 lg:py-32">
+    <section
+      id="professor"
+      className="bg-surface py-16 sm:py-24 lg:py-32 overflow-hidden"
+    >
       <Container>
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-10 lg:gap-12 items-center">
           {/* Text */}
