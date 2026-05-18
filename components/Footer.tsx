@@ -6,7 +6,13 @@ export function Footer() {
     <footer className="bg-background border-t border-hairline py-8 sm:py-10 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
       <Container className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4 text-center sm:text-left">
         <div className="flex items-center gap-2">
-          <span className="inline-block h-5 w-5 rounded-full bg-foreground" />
+          <img
+            src="/logo.svg"
+            alt=""
+            width={20}
+            height={20}
+            className="h-5 w-5 rounded-md"
+          />
           <span className="text-[13px] font-semibold text-foreground">
             {site.name}
           </span>

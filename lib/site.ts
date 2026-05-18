@@ -1,5 +1,5 @@
 export const site = {
-  name: "Oxford Particular",
+  name: "Reinaldo Montes",
   tagline: "Aprenda inglês de verdade.",
   phoneDisplay: "31 9 8362-6602",
   whatsappE164: "5531983626602",

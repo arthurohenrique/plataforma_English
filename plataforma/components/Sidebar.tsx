@@ -48,9 +48,15 @@ export function Sidebar() {
   return (
     <aside className="hidden lg:flex lg:flex-col w-[260px] shrink-0 border-r border-[color:var(--p-hairline)] bg-[color:var(--p-surface)]/60 backdrop-blur-xl">
       <div className="flex items-center gap-2 px-6 h-16 border-b border-[color:var(--p-hairline)]">
-        <span className="inline-block h-6 w-6 rounded-full bg-[color:var(--p-fg)]" />
+        <img
+          src="/logo.svg"
+          alt=""
+          width={24}
+          height={24}
+          className="h-6 w-6 rounded-md"
+        />
         <span className="text-[15px] font-semibold tracking-tight">
-          Oxford Particular
+          Reinaldo Montes
         </span>
       </div>
 

@@ -48,9 +48,15 @@ export function LoginScreen() {
     >
       <div className="w-full max-w-md p-fade-in">
         <div className="flex items-center gap-2 justify-center">
-          <span className="inline-block h-7 w-7 rounded-full bg-[color:var(--p-fg)]" />
+          <img
+            src="/logo.svg"
+            alt=""
+            width={28}
+            height={28}
+            className="h-7 w-7 rounded-lg"
+          />
           <span className="text-[15px] sm:text-[16px] font-semibold tracking-tight">
-            Oxford Particular
+            Reinaldo Montes
           </span>
         </div>
 

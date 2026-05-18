@@ -1,5 +1,5 @@
 import { Container } from "./ui/Container";
-import { whatsappUrl } from "@/lib/site";
+import { whatsappUrl, site } from "@/lib/site";
 
 const nav = [
   { href: "#metodo", label: "Método" },
@@ -14,9 +14,15 @@ export function Navbar() {
     <header className="sticky top-0 z-40 w-full backdrop-blur-xl bg-white/70 border-b border-hairline">
       <Container className="flex h-14 items-center justify-between gap-3">
         <a href="#top" className="flex items-center gap-2 min-w-0 shrink-0">
-          <span className="inline-block h-6 w-6 rounded-full bg-foreground shrink-0" />
+          <img
+            src="/logo.svg"
+            alt=""
+            width={24}
+            height={24}
+            className="h-6 w-6 rounded-md shrink-0"
+          />
           <span className="text-[14px] sm:text-[15px] font-semibold tracking-tight text-foreground truncate">
-            Oxford<span className="hidden xs:inline sm:inline"> Particular</span>
+            {site.name}
           </span>
         </a>
 

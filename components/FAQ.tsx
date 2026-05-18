@@ -23,7 +23,7 @@ const faqs = [
   },
   {
     q: "Quais materiais usamos?",
-    a: "Materiais oficiais da Oxford University Press e recursos complementares selecionados conforme o seu objetivo.",
+    a: "Material selecionado e recursos complementares escolhidos conforme o seu nível e objetivo. Tudo enviado de forma organizada antes de cada aula.",
   },
 ];
 

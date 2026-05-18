@@ -46,10 +46,15 @@ export function Topbar({
           </Link>
         ) : (
           <Link href={home} className="lg:hidden flex items-center gap-2 min-w-0">
-            <span className="inline-block h-5 w-5 rounded-full bg-[color:var(--p-fg)] shrink-0" />
+            <img
+              src="/logo.svg"
+              alt=""
+              width={20}
+              height={20}
+              className="h-5 w-5 rounded-md shrink-0"
+            />
             <span className="text-[13px] sm:text-[14px] font-semibold tracking-tight truncate">
-              Oxford
-              <span className="hidden sm:inline"> Particular</span>
+              Reinaldo Montes
             </span>
           </Link>
         )}

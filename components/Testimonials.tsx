@@ -15,7 +15,7 @@ const testimonials = [
   },
   {
     quote:
-      "Viajei para o Canadá e me virei perfeitamente. O método Oxford realmente funciona.",
+      "Viajei para o Canadá e me virei perfeitamente. O método do Reinaldo realmente funciona.",
     name: "Ana C.",
     role: "Designer",
   },

@@ -9,9 +9,12 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Aprenda Inglês de verdade. | Aulas particulares com Método Oxford",
+  title: "Reinaldo Montes — Aulas particulares de inglês",
   description:
-    "Aulas de inglês online, individuais, com método Oxford comprovado. Horários flexíveis, foco em conversação e resultados reais.",
+    "Aulas particulares de inglês online, individuais, com foco em conversação. Horários flexíveis, plano sob medida e resultados reais.",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export const viewport = {

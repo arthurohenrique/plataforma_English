@@ -13,8 +13,8 @@ const pillars: Pillar[] = [
     Icon: ChatIcon,
   },
   {
-    title: "Currículo Oxford.",
-    desc: "Estrutura comprovada, materiais oficiais e progressão clara do A1 ao C1.",
+    title: "Currículo estruturado.",
+    desc: "Progressão clara do A1 ao C1, com material selecionado para cada etapa.",
     Icon: CapIcon,
   },
   {
@@ -30,7 +30,7 @@ export function Method() {
       <Container>
         <div className="max-w-2xl">
           <p className="text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.18em] text-accent">
-            Método Oxford
+            Como funciona
           </p>
           <h2 className="mt-4 text-[clamp(1.875rem,5.5vw,3.25rem)] leading-[1.05] font-semibold tracking-[-0.03em] text-foreground">
             Um método pensado
@@ -38,8 +38,8 @@ export function Method() {
             <span className="text-muted">para você falar.</span>
           </h2>
           <p className="mt-4 sm:mt-5 text-[16px] sm:text-[18px] leading-relaxed text-muted">
-            Três pilares que combinam a tradição da Oxford University Press
-            com o ritmo da sua rotina.
+            Três pilares que ajustam o ritmo das aulas ao seu objetivo —
+            sem fórmula pronta, sem turma cheia.
           </p>
         </div>
 
