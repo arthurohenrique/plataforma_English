@@ -1,5 +1,7 @@
 "use client";
 
+import { Icon } from "./ui/Icon";
+
 function toYoutubeEmbed(url: string): string | null {
   try {
     const u = new URL(url);
@@ -27,8 +29,16 @@ function toYoutubeEmbed(url: string): string | null {
 export function VideoEmbed({ url, title }: { url: string; title?: string }) {
   if (!url) {
     return (
-      <div className="flex aspect-video w-full items-center justify-center rounded-2xl border border-dashed border-[color:var(--p-hairline-strong)] bg-[color:var(--p-surface-2)] text-[13px] text-[color:var(--p-muted)]">
-        Vídeo ainda não anexado.
+      <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[color:var(--p-hairline-strong)] bg-[color:var(--p-surface-2)] px-6 text-center">
+        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white border border-[color:var(--p-hairline)] text-[color:var(--p-muted)]">
+          <Icon name="film" size={22} />
+        </span>
+        <p className="text-[13px] sm:text-[14px] font-medium text-[color:var(--p-fg)]">
+          Vídeo ainda não anexado
+        </p>
+        <p className="max-w-xs text-[12px] text-[color:var(--p-muted)]">
+          O professor pode adicionar o vídeo desta aula a qualquer momento.
+        </p>
       </div>
     );
   }

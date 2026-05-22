@@ -92,16 +92,19 @@ export function CheckpointTimeline({
           const isSel = selected?.id === c.id;
           return (
             <li key={c.id}>
-              <button
-                onClick={() => setSelectedId(c.id)}
-                className={`w-full text-left rounded-2xl border px-3 sm:px-4 py-3 transition-all ${
+              <div
+                className={`flex items-center gap-2 rounded-2xl border px-2 sm:px-3 py-2 transition-all ${
                   isSel
                     ? "border-[color:var(--p-fg)] bg-[color:var(--p-surface-2)]"
                     : "border-[color:var(--p-hairline)] bg-white hover:bg-[color:var(--p-surface-2)]"
                 }`}
               >
-                <div className="flex items-center gap-3">
-                  <div
+                <button
+                  type="button"
+                  onClick={() => setSelectedId(c.id)}
+                  className="flex flex-1 items-center gap-3 min-w-0 text-left rounded-xl px-1.5 py-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--p-accent)]"
+                >
+                  <span
                     className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold ${
                       watched
                         ? "bg-emerald-500 text-white"
@@ -111,46 +114,42 @@ export function CheckpointTimeline({
                     }`}
                   >
                     {watched ? <Icon name="check" size={14} /> : i + 1}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold tracking-tight text-[color:var(--p-fg)]">
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-[13px] font-semibold tracking-tight text-[color:var(--p-fg)]">
                       {c.title}
-                    </p>
-                    <p className="mt-1 flex items-center gap-1.5 flex-wrap text-[11px] text-[color:var(--p-muted)]">
+                    </span>
+                    <span className="mt-1 flex items-center gap-1.5 flex-wrap text-[11px] text-[color:var(--p-muted)]">
                       <span>{c.durationMin ? `${c.durationMin} min` : "Aula"}</span>
                       {next && <Tag tone="accent">Próxima</Tag>}
                       {watched && <Tag tone="success">Assistida</Tag>}
-                    </p>
-                  </div>
+                    </span>
+                  </span>
+                </button>
 
-                  {mode === "manage" && (
-                    <div className="ml-auto flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          reorderCheckpoint(c.id, "up");
-                        }}
-                        className="h-7 w-7 inline-flex items-center justify-center rounded-full border border-[color:var(--p-hairline)] bg-white text-[color:var(--p-muted)] hover:text-[color:var(--p-fg)] disabled:opacity-40"
-                        disabled={i === 0}
-                        aria-label="Mover para cima"
-                      >
-                        <Icon name="chevron-up" size={14} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          reorderCheckpoint(c.id, "down");
-                        }}
-                        className="h-7 w-7 inline-flex items-center justify-center rounded-full border border-[color:var(--p-hairline)] bg-white text-[color:var(--p-muted)] hover:text-[color:var(--p-fg)] disabled:opacity-40"
-                        disabled={i === sorted.length - 1}
-                        aria-label="Mover para baixo"
-                      >
-                        <Icon name="chevron-down" size={14} />
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </button>
+                {mode === "manage" && (
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => reorderCheckpoint(c.id, "up")}
+                      className="h-7 w-7 inline-flex items-center justify-center rounded-full border border-[color:var(--p-hairline)] bg-white text-[color:var(--p-muted)] hover:text-[color:var(--p-fg)] disabled:opacity-40"
+                      disabled={i === 0}
+                      aria-label="Mover para cima"
+                    >
+                      <Icon name="chevron-up" size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => reorderCheckpoint(c.id, "down")}
+                      className="h-7 w-7 inline-flex items-center justify-center rounded-full border border-[color:var(--p-hairline)] bg-white text-[color:var(--p-muted)] hover:text-[color:var(--p-fg)] disabled:opacity-40"
+                      disabled={i === sorted.length - 1}
+                      aria-label="Mover para baixo"
+                    >
+                      <Icon name="chevron-down" size={14} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </li>
           );
         })}

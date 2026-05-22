@@ -15,7 +15,7 @@ const checkpoints: Checkpoint[] = [
     title: "Aula 1 — Boas-vindas e Diagnóstico",
     description:
       "Apresentação do método, expectativas e diagnóstico inicial do seu inglês.",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    videoUrl: "",
     durationMin: 12,
     order: 0,
     createdAt: now(),
@@ -25,7 +25,7 @@ const checkpoints: Checkpoint[] = [
     title: "Aula 2 — Sons que travam o brasileiro",
     description:
       "Mapa rápido dos sons do inglês que precisam de atenção desde já.",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    videoUrl: "",
     durationMin: 18,
     order: 1,
     createdAt: now(),
@@ -34,7 +34,7 @@ const checkpoints: Checkpoint[] = [
     id: "c-3",
     title: "Aula 3 — Vocabulário do dia a dia",
     description: "200 palavras que cobrem 80% das suas conversas iniciais.",
-    videoUrl: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    videoUrl: "",
     durationMin: 22,
     order: 2,
     createdAt: now(),
