@@ -20,6 +20,10 @@ export function Topbar({
     auth?.role === "professor"
       ? platformRoutes.professor.home
       : platformRoutes.aluno.home;
+  const materiais =
+    auth?.role === "professor"
+      ? platformRoutes.professor.materiais
+      : platformRoutes.aluno.materiais;
   const aulas =
     auth?.role === "professor"
       ? platformRoutes.professor.aulas
@@ -66,7 +70,10 @@ export function Topbar({
         <div className="ml-auto flex items-center gap-1 sm:gap-2 shrink-0">
           <nav className="lg:hidden flex items-center gap-1 overflow-x-auto -mx-1 px-1">
             <PillLink href={home} active={pathname === home}>
-              Áreas
+              Painel
+            </PillLink>
+            <PillLink href={materiais} active={pathname.startsWith(materiais)}>
+              Materiais
             </PillLink>
             <PillLink href={aulas} active={pathname.startsWith(aulas)}>
               Aulas

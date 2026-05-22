@@ -5,31 +5,6 @@ export type AuthState = {
   role: Role;
 } | null;
 
-import type { IconName } from "./components/ui/Icon";
-
-export type Area = {
-  id: string;
-  title: string;
-  description: string;
-  icon: IconName;
-  accent: string;
-};
-
-export type QuestionKind = "multiple-choice" | "open";
-
-export type Question = {
-  id: string;
-  areaId: string;
-  title: string;
-  statement: string;
-  kind: QuestionKind;
-  options?: string[];
-  correctIndex?: number;
-  expectedAnswer?: string;
-  hint?: string;
-  createdAt: number;
-};
-
 export type Checkpoint = {
   id: string;
   title: string;
@@ -40,12 +15,36 @@ export type Checkpoint = {
   createdAt: number;
 };
 
-export type AttemptResult = "correct" | "incorrect" | "revealed";
+// Material library
+// ---------------------------------------------------------------------------
+// O professor cria seções (com ordem definida por ele) e anexa arquivos a cada
+// seção. Cada arquivo carrega seu binário em base64 (dataUrl) para que o aluno
+// possa baixar diretamente sem backend. Por isso há um limite prático de ~5MB
+// por arquivo (localStorage).
 
-export type Attempt = {
-  questionId: string;
-  result: AttemptResult;
-  at: number;
+export type MaterialSection = {
+  id: string;
+  title: string;
+  description: string;
+  order: number;
+  createdAt: number;
+};
+
+export type Material = {
+  id: string;
+  sectionId: string;
+  /** Nome exibido para o aluno (editável pelo professor). */
+  displayName: string;
+  /** Nome do arquivo original no upload. */
+  fileName: string;
+  /** MIME type detectado pelo navegador. */
+  mime: string;
+  /** Tamanho em bytes. */
+  size: number;
+  /** Data URL base64 do conteúdo do arquivo. */
+  dataUrl: string;
+  order: number;
+  createdAt: number;
 };
 
 // Flashcards / Spaced repetition
@@ -85,10 +84,10 @@ export type Flashcard = {
 };
 
 export type ContentState = {
-  questions: Question[];
   checkpoints: Checkpoint[];
-  attempts: Attempt[];
   watchedCheckpointIds: string[];
+  materialSections: MaterialSection[];
+  materials: Material[];
   decks: Deck[];
   flashcards: Flashcard[];
 };

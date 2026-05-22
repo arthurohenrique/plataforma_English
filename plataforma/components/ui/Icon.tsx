@@ -24,7 +24,11 @@ export type IconName =
   | "chevron-right"
   | "chevron-up"
   | "chevron-down"
-  | "logout";
+  | "logout"
+  | "folder"
+  | "download"
+  | "upload"
+  | "trash";
 
 type Props = SVGProps<SVGSVGElement> & {
   name: IconName;
@@ -230,6 +234,38 @@ export function Icon({ name, size = 20, className = "", ...rest }: Props) {
           <path d="M9 4H5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h4" />
           <path d="M16 8 20 12l-4 4" />
           <path d="M20 12H10" />
+        </svg>
+      );
+    case "folder":
+      return (
+        <svg {...common}>
+          <path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h4l2 2.5h9A1.5 1.5 0 0 1 21 9v9.5A1.5 1.5 0 0 1 19.5 20h-15A1.5 1.5 0 0 1 3 18.5z" />
+        </svg>
+      );
+    case "download":
+      return (
+        <svg {...common}>
+          <path d="M12 4v12" />
+          <path d="m7 11 5 5 5-5" />
+          <path d="M4 20h16" />
+        </svg>
+      );
+    case "upload":
+      return (
+        <svg {...common}>
+          <path d="M12 20V8" />
+          <path d="m7 13 5-5 5 5" />
+          <path d="M4 4h16" />
+        </svg>
+      );
+    case "trash":
+      return (
+        <svg {...common}>
+          <path d="M4 7h16" />
+          <path d="M9 7V4h6v3" />
+          <path d="M6 7v13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7" />
+          <path d="M10 11v6" />
+          <path d="M14 11v6" />
         </svg>
       );
   }

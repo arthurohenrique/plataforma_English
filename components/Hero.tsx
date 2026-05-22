@@ -54,7 +54,7 @@ export function Hero() {
           <div className="absolute -inset-x-6 sm:-inset-x-10 -top-6 h-40 rounded-[40px] bg-gradient-to-r from-accent/10 via-blue-deep/10 to-gold/10 blur-2xl" />
           <div className="relative rounded-[24px] sm:rounded-[28px] border border-hairline bg-white/80 backdrop-blur-xl shadow-[0_30px_60px_-20px_rgba(10,37,64,0.25)] p-6 sm:p-8 lg:p-10">
             <div className="grid grid-cols-3 gap-3 sm:gap-6 text-left">
-              <Stat value="A1 → C1" label="Trilha completa" />
+              <Stat value="A1 → C2" label="Trilha completa" />
               <Stat value="1:1" label="Aulas individuais" />
               <Stat value="100%" label="Online, ao vivo" />
             </div>

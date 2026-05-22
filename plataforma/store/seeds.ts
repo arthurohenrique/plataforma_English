@@ -3,55 +3,11 @@ import type {
   ContentState,
   Deck,
   Flashcard,
-  Question,
+  Material,
+  MaterialSection,
 } from "../types";
 
 const now = () => Date.now();
-
-const questions: Question[] = [
-  {
-    id: "q-voc-1",
-    areaId: "vocabulario",
-    title: "Sinônimo de \"happy\"",
-    statement: "Qual das opções abaixo é um sinônimo direto de \"happy\"?",
-    kind: "multiple-choice",
-    options: ["Sad", "Glad", "Angry", "Tired"],
-    correctIndex: 1,
-    hint: "Pense em \"glad to meet you\".",
-    createdAt: now(),
-  },
-  {
-    id: "q-voc-2",
-    areaId: "vocabulario",
-    title: "Tradução contextual",
-    statement:
-      "Traduza para o inglês de forma natural: \"Eu marquei uma reunião para amanhã às 10h.\"",
-    kind: "open",
-    expectedAnswer: "I scheduled a meeting for tomorrow at 10 a.m.",
-    createdAt: now(),
-  },
-  {
-    id: "q-pron-1",
-    areaId: "pronuncia",
-    title: "Som de TH",
-    statement:
-      "Qual palavra usa o mesmo som de TH de \"think\" (e não o de \"this\")?",
-    kind: "multiple-choice",
-    options: ["This", "Thirty", "Those", "Mother"],
-    correctIndex: 1,
-    createdAt: now(),
-  },
-  {
-    id: "q-gram-1",
-    areaId: "gramatica",
-    title: "Present Perfect",
-    statement: "Complete: \"I ___ (live) here for five years.\"",
-    kind: "open",
-    expectedAnswer: "have lived",
-    hint: "Use Present Perfect com \"for\".",
-    createdAt: now(),
-  },
-];
 
 const checkpoints: Checkpoint[] = [
   {
@@ -84,6 +40,26 @@ const checkpoints: Checkpoint[] = [
     createdAt: now(),
   },
 ];
+
+const materialSections: MaterialSection[] = [
+  {
+    id: "ms-bem-vindo",
+    title: "Boas-vindas",
+    description:
+      "Comece por aqui. Materiais introdutórios para alinhar expectativas.",
+    order: 0,
+    createdAt: now(),
+  },
+  {
+    id: "ms-vocabulario",
+    title: "Vocabulário essencial",
+    description: "Listas e referências para você revisar no dia a dia.",
+    order: 1,
+    createdAt: now(),
+  },
+];
+
+const materials: Material[] = [];
 
 const decks: Deck[] = [
   {
@@ -145,10 +121,10 @@ const flashcards: Flashcard[] = [
 ];
 
 export const SEED_CONTENT: ContentState = {
-  questions,
   checkpoints,
-  attempts: [],
   watchedCheckpointIds: [],
+  materialSections,
+  materials,
   decks,
   flashcards,
 };

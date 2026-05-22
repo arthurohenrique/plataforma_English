@@ -1,5 +1,5 @@
-import { AreaSkeleton } from "@/plataforma/components/skeletons/AreaSkeleton";
+import { MaterialsSkeleton } from "@/plataforma/components/skeletons/MaterialsSkeleton";
 
 export default function Loading() {
-  return <AreaSkeleton />;
+  return <MaterialsSkeleton />;
 }

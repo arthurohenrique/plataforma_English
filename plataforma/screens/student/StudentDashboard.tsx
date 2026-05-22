@@ -3,11 +3,9 @@
 import { usePlatform } from "../../store/PlatformContext";
 import { PlatformShell } from "../../components/PlatformShell";
 import { AuthGuard } from "../../components/AuthGuard";
-import { AreaCard } from "../../components/AreaCard";
-import { AREAS } from "../../areas";
 import { platformRoutes } from "../../routes";
 import { Tag } from "../../components/ui/Tag";
-import { Icon } from "../../components/ui/Icon";
+import { Icon, type IconName } from "../../components/ui/Icon";
 import { DashboardSkeleton } from "../../components/skeletons/DashboardSkeleton";
 import { countDue } from "../../scheduler";
 
@@ -15,9 +13,9 @@ export function StudentDashboard() {
   return (
     <AuthGuard
       role="aluno"
-      fallback={<DashboardSkeleton title="Áreas de estudo" />}
+      fallback={<DashboardSkeleton title="Painel do aluno" />}
     >
-      <PlatformShell title="Áreas de estudo">
+      <PlatformShell title="Painel do aluno">
         <Inner />
       </PlatformShell>
     </AuthGuard>
@@ -27,8 +25,8 @@ export function StudentDashboard() {
 function Inner() {
   const { auth, content, decksByScope, cardsByDeck } = usePlatform();
 
-  const totalQuestions = content.questions.length;
-  const correctCount = content.attempts.filter((a) => a.result === "correct").length;
+  const totalMaterials = content.materials.length;
+  const totalSections = content.materialSections.length;
   const watchedClasses = content.watchedCheckpointIds.length;
 
   const myDecks = decksByScope("aluno");
@@ -49,110 +47,75 @@ function Inner() {
           <span className="text-[color:var(--p-muted)]">de verdade?</span>
         </h1>
         <p className="mt-3 sm:mt-4 text-[14px] sm:text-[16px] leading-relaxed text-[color:var(--p-muted)]">
-          Escolha uma área para resolver os desafios criados pelo seu professor,
-          ou continue de onde parou nas aulas gravadas.
+          Baixe os materiais que o professor publicou, continue de onde parou
+          nas aulas gravadas e revise suas cartas.
         </p>
       </header>
 
       <section className="mt-6 sm:mt-8 grid grid-cols-3 gap-2 sm:gap-3">
-        <StatCard label="Desafios" value={String(totalQuestions)} />
-        <StatCard
-          label="Acertos"
-          value={`${correctCount}/${totalQuestions}`}
-        />
+        <StatCard label="Materiais" value={String(totalMaterials)} />
         <StatCard
           label="Aulas"
           value={`${watchedClasses}/${content.checkpoints.length}`}
         />
+        <StatCard label="Cartas hoje" value={String(totalCardsDue)} />
       </section>
 
       <h2 className="mt-10 sm:mt-12 text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.18em] text-[color:var(--p-muted)]">
-        Áreas
+        Materiais
       </h2>
-      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-        {AREAS.map((a) => {
-          const qs = content.questions.filter((q) => q.areaId === a.id);
-          const done = qs.filter((q) =>
-            content.attempts.some(
-              (att) => att.questionId === q.id && att.result === "correct",
-            ),
-          ).length;
-          return (
-            <AreaCard
-              key={a.id}
-              area={a}
-              href={platformRoutes.aluno.area(a.id)}
-              meta={`${qs.length} ${qs.length === 1 ? "desafio" : "desafios"}`}
-              progress={{ done, total: qs.length }}
-            />
-          );
-        })}
-      </div>
+      <ShortcutCard
+        href={platformRoutes.aluno.materiais}
+        icon="folder"
+        title="Biblioteca de materiais"
+        tags={
+          totalMaterials > 0 ? (
+            <Tag tone="accent">
+              {totalSections} {totalSections === 1 ? "seção" : "seções"}
+            </Tag>
+          ) : null
+        }
+        description={
+          totalMaterials === 0
+            ? "Nenhum material publicado ainda."
+            : `${totalMaterials} ${totalMaterials === 1 ? "arquivo" : "arquivos"} disponíveis para download.`
+        }
+      />
 
-      <h2 className="mt-12 sm:mt-14 text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.18em] text-[color:var(--p-muted)]">
+      <h2 className="mt-10 sm:mt-12 text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.18em] text-[color:var(--p-muted)]">
         Flashcards
       </h2>
-      <a
+      <ShortcutCard
         href={platformRoutes.aluno.flashcards}
-        className="mt-4 block p-card p-5 sm:p-7 lg:p-8 transition-all hover:-translate-y-[2px] hover:shadow-[0_20px_40px_-20px_rgba(10,37,64,0.18)]"
-      >
-        <div className="flex items-center gap-3 sm:gap-5">
-          <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-[color:var(--p-accent-soft)] text-[color:var(--p-accent)] shrink-0">
-            <Icon name="book" size={22} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-[17px] sm:text-[20px] font-semibold tracking-tight">
-                Estudo espaçado
-              </h3>
-              {totalCardsDue > 0 ? (
-                <Tag tone="accent">
-                  {totalCardsDue} para revisar
-                </Tag>
-              ) : myDecks.length > 0 ? (
-                <Tag tone="success">Em dia</Tag>
-              ) : null}
-            </div>
-            <p className="mt-1 text-[13px] sm:text-[14px] text-[color:var(--p-muted)]">
-              {myDecks.length === 0
-                ? "Crie seus decks de flashcards para fixar vocabulário."
-                : `${myDecks.length} ${myDecks.length === 1 ? "deck criado" : "decks criados"}.`}
-            </p>
-          </div>
-          <span className="text-[color:var(--p-muted)] shrink-0">
-            <Icon name="chevron-right" size={18} />
-          </span>
-        </div>
-      </a>
+        icon="book"
+        title="Estudo espaçado"
+        tags={
+          totalCardsDue > 0 ? (
+            <Tag tone="accent">{totalCardsDue} para revisar</Tag>
+          ) : myDecks.length > 0 ? (
+            <Tag tone="success">Em dia</Tag>
+          ) : null
+        }
+        description={
+          myDecks.length === 0
+            ? "Crie seus decks de flashcards para fixar vocabulário."
+            : `${myDecks.length} ${myDecks.length === 1 ? "deck criado" : "decks criados"}.`
+        }
+      />
 
       <h2 className="mt-10 sm:mt-12 text-[12px] sm:text-[13px] font-semibold uppercase tracking-[0.18em] text-[color:var(--p-muted)]">
         Aulas gravadas
       </h2>
-      <a
+      <ShortcutCard
         href={platformRoutes.aluno.aulas}
-        className="mt-4 block p-card p-5 sm:p-7 lg:p-8 transition-all hover:-translate-y-[2px] hover:shadow-[0_20px_40px_-20px_rgba(10,37,64,0.18)]"
-      >
-        <div className="flex items-center gap-3 sm:gap-5">
-          <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-[color:var(--p-accent-soft)] text-[color:var(--p-accent)] shrink-0">
-            <Icon name="play" size={22} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-[17px] sm:text-[20px] font-semibold tracking-tight">
-                Continue assistindo
-              </h3>
-              <Tag tone="accent">Cronologia oficial</Tag>
-            </div>
-            <p className="mt-1 text-[13px] sm:text-[14px] text-[color:var(--p-muted)]">
-              {content.checkpoints.length} aulas em ordem definida pelo professor.
-              {watchedClasses > 0 && ` Você já assistiu ${watchedClasses}.`}
-            </p>
-          </div>
-          <span className="text-[color:var(--p-muted)] shrink-0">
-            <Icon name="chevron-right" size={18} />
-          </span>
-        </div>
-      </a>
+        icon="play"
+        title="Continue assistindo"
+        tags={<Tag tone="accent">Cronologia oficial</Tag>}
+        description={
+          `${content.checkpoints.length} aulas em ordem definida pelo professor.` +
+          (watchedClasses > 0 ? ` Você já assistiu ${watchedClasses}.` : "")
+        }
+      />
     </div>
   );
 }
@@ -167,5 +130,46 @@ function StatCard({ label, value }: { label: string; value: string }) {
         {value}
       </p>
     </div>
+  );
+}
+
+function ShortcutCard({
+  href,
+  icon,
+  title,
+  description,
+  tags,
+}: {
+  href: string;
+  icon: IconName;
+  title: string;
+  description: string;
+  tags?: React.ReactNode;
+}) {
+  return (
+    <a
+      href={href}
+      className="mt-4 block p-card p-5 sm:p-7 lg:p-8 transition-all hover:-translate-y-[2px] hover:shadow-[0_20px_40px_-20px_rgba(10,37,64,0.18)]"
+    >
+      <div className="flex items-center gap-3 sm:gap-5">
+        <div className="flex h-12 w-12 sm:h-14 sm:w-14 items-center justify-center rounded-2xl bg-[color:var(--p-accent-soft)] text-[color:var(--p-accent)] shrink-0">
+          <Icon name={icon} size={22} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-[17px] sm:text-[20px] font-semibold tracking-tight">
+              {title}
+            </h3>
+            {tags}
+          </div>
+          <p className="mt-1 text-[13px] sm:text-[14px] text-[color:var(--p-muted)]">
+            {description}
+          </p>
+        </div>
+        <span className="text-[color:var(--p-muted)] shrink-0">
+          <Icon name="chevron-right" size={18} />
+        </span>
+      </div>
+    </a>
   );
 }

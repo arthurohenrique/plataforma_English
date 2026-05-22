@@ -7,11 +7,11 @@ export { PlatformProvider, usePlatform } from "./store/PlatformContext";
 export { LoginScreen } from "./screens/LoginScreen";
 
 export { StudentDashboard } from "./screens/student/StudentDashboard";
-export { StudentArea } from "./screens/student/StudentArea";
+export { StudentMaterials } from "./screens/student/StudentMaterials";
 export { StudentClasses } from "./screens/student/StudentClasses";
 
 export { TeacherDashboard } from "./screens/teacher/TeacherDashboard";
-export { TeacherArea } from "./screens/teacher/TeacherArea";
+export { TeacherMaterials } from "./screens/teacher/TeacherMaterials";
 export { TeacherClasses } from "./screens/teacher/TeacherClasses";
 
 export { FlashcardsList } from "./screens/flashcards/FlashcardsList";
@@ -20,19 +20,15 @@ export { DeckStudy } from "./screens/flashcards/DeckStudy";
 export { DeckCards } from "./screens/flashcards/DeckCards";
 
 export { platformRoutes } from "./routes";
-export { AREAS, findArea } from "./areas";
 export { reschedule, isDue, countDue, dueCards } from "./scheduler";
 
 export type {
   Role,
   AuthState,
-  Area,
-  Question,
-  QuestionKind,
   Checkpoint,
-  Attempt,
-  AttemptResult,
   ContentState,
+  Material,
+  MaterialSection,
   Deck,
   Flashcard,
   Grade,

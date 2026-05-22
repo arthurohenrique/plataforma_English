@@ -19,9 +19,15 @@ function getNav(role: "aluno" | "professor"): NavItem[] {
   return [
     {
       href: base.home,
-      label: "Áreas de estudo",
+      label: "Painel",
       icon: "blocks",
       match: (p) => p === base.home,
+    },
+    {
+      href: base.materiais,
+      label: "Materiais",
+      icon: "folder",
+      match: (p) => p.startsWith(base.materiais),
     },
     {
       href: base.aulas,

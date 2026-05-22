@@ -3,7 +3,7 @@ export const platformRoutes = {
   login: "/plataforma",
   aluno: {
     home: "/plataforma/aluno",
-    area: (id: string) => `/plataforma/aluno/area/${id}`,
+    materiais: "/plataforma/aluno/materiais",
     aulas: "/plataforma/aluno/aulas",
     flashcards: "/plataforma/aluno/flashcards",
     deck: (id: string) => `/plataforma/aluno/flashcards/${id}`,
@@ -12,7 +12,7 @@ export const platformRoutes = {
   },
   professor: {
     home: "/plataforma/professor",
-    area: (id: string) => `/plataforma/professor/area/${id}`,
+    materiais: "/plataforma/professor/materiais",
     aulas: "/plataforma/professor/aulas",
     flashcards: "/plataforma/professor/flashcards",
     deck: (id: string) => `/plataforma/professor/flashcards/${id}`,

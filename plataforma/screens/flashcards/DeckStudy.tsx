@@ -5,14 +5,14 @@ import { AuthGuard } from "../../components/AuthGuard";
 import { PlatformShell } from "../../components/PlatformShell";
 import { FlashcardReviewer } from "../../components/FlashcardReviewer";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { AreaSkeleton } from "../../components/skeletons/AreaSkeleton";
+import { MaterialsSkeleton } from "../../components/skeletons/MaterialsSkeleton";
 import { usePlatform } from "../../store/PlatformContext";
 import { platformRoutes } from "../../routes";
 import type { OwnerScope } from "../../types";
 
 export function DeckStudy({ scope }: { scope: OwnerScope }) {
   return (
-    <AuthGuard role={scope} fallback={<AreaSkeleton />}>
+    <AuthGuard role={scope} fallback={<MaterialsSkeleton />}>
       <Inner scope={scope} />
     </AuthGuard>
   );

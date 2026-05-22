@@ -11,15 +11,15 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import type {
-  AttemptResult,
   AuthState,
   Checkpoint,
   ContentState,
   Deck,
   Flashcard,
   Grade,
+  Material,
+  MaterialSection,
   OwnerScope,
-  Question,
   Role,
 } from "../types";
 import { reschedule } from "../scheduler";
@@ -40,18 +40,26 @@ type Ctx = {
   login: (username: string, role: Role) => void;
   logout: () => void;
 
-  // Questions
-  upsertQuestion: (q: Question) => void;
-  removeQuestion: (id: string) => void;
-
   // Checkpoints
   upsertCheckpoint: (c: Checkpoint) => void;
   removeCheckpoint: (id: string) => void;
   reorderCheckpoint: (id: string, direction: "up" | "down") => void;
 
   // Student progress
-  recordAttempt: (questionId: string, result: AttemptResult) => void;
   markCheckpointWatched: (id: string) => void;
+
+  // Material sections + files
+  upsertMaterialSection: (section: MaterialSection) => void;
+  removeMaterialSection: (id: string) => void;
+  reorderMaterialSection: (id: string, direction: "up" | "down") => void;
+  addMaterial: (
+    sectionId: string,
+    file: { displayName: string; fileName: string; mime: string; size: number; dataUrl: string },
+  ) => void;
+  renameMaterial: (id: string, displayName: string) => void;
+  removeMaterial: (id: string) => void;
+  reorderMaterial: (id: string, direction: "up" | "down") => void;
+  materialsBySection: (sectionId: string) => Material[];
 
   // Flashcards / spaced repetition
   upsertDeck: (deck: Deck) => void;
@@ -82,12 +90,13 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
     setAuth(loadAuth());
     const stored = loadContent();
     if (stored) {
-      // Forward-compat: ensure new fields exist if loading older state.
+      // Forward-compat: ignore campos legados (questions/attempts) e seed campos novos.
       setContent({
-        questions: stored.questions ?? SEED_CONTENT.questions,
         checkpoints: stored.checkpoints ?? SEED_CONTENT.checkpoints,
-        attempts: stored.attempts ?? [],
         watchedCheckpointIds: stored.watchedCheckpointIds ?? [],
+        materialSections:
+          stored.materialSections ?? SEED_CONTENT.materialSections,
+        materials: stored.materials ?? SEED_CONTENT.materials,
         decks: stored.decks ?? SEED_CONTENT.decks,
         flashcards: stored.flashcards ?? SEED_CONTENT.flashcards,
       });
@@ -121,24 +130,6 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
     router.push(platformRoutes.login);
   }, [router]);
 
-  const upsertQuestion = useCallback((q: Question) => {
-    setContent((prev) => {
-      const exists = prev.questions.some((x) => x.id === q.id);
-      const questions = exists
-        ? prev.questions.map((x) => (x.id === q.id ? q : x))
-        : [...prev.questions, { ...q, id: q.id || uid("q") }];
-      return { ...prev, questions };
-    });
-  }, []);
-
-  const removeQuestion = useCallback((id: string) => {
-    setContent((prev) => ({
-      ...prev,
-      questions: prev.questions.filter((q) => q.id !== id),
-      attempts: prev.attempts.filter((a) => a.questionId !== id),
-    }));
-  }, []);
-
   const upsertCheckpoint = useCallback((c: Checkpoint) => {
     setContent((prev) => {
       const exists = prev.checkpoints.some((x) => x.id === c.id);
@@ -152,7 +143,6 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
               order: c.order ?? prev.checkpoints.length,
             },
           ];
-      // Normalize order
       checkpoints.sort((a, b) => a.order - b.order);
       checkpoints.forEach((cp, i) => (cp.order = i));
       return { ...prev, checkpoints };
@@ -189,18 +179,6 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const recordAttempt = useCallback(
-    (questionId: string, result: AttemptResult) => {
-      setContent((prev) => {
-        // Replace any previous attempt for this question
-        const attempts = prev.attempts.filter((a) => a.questionId !== questionId);
-        attempts.push({ questionId, result, at: Date.now() });
-        return { ...prev, attempts };
-      });
-    },
-    [],
-  );
-
   const markCheckpointWatched = useCallback((id: string) => {
     setContent((prev) => {
       if (prev.watchedCheckpointIds.includes(id)) return prev;
@@ -210,6 +188,163 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
       };
     });
   }, []);
+
+  // ---------------------------------------------------------------------
+  // Material sections
+  // ---------------------------------------------------------------------
+
+  const upsertMaterialSection = useCallback((section: MaterialSection) => {
+    setContent((prev) => {
+      const exists = prev.materialSections.some((s) => s.id === section.id);
+      const list = exists
+        ? prev.materialSections.map((s) =>
+            s.id === section.id ? section : s,
+          )
+        : [
+            ...prev.materialSections,
+            {
+              ...section,
+              id: section.id || uid("ms"),
+              order: section.order ?? prev.materialSections.length,
+            },
+          ];
+      list.sort((a, b) => a.order - b.order);
+      list.forEach((s, i) => (s.order = i));
+      return { ...prev, materialSections: list };
+    });
+  }, []);
+
+  const removeMaterialSection = useCallback((id: string) => {
+    setContent((prev) => {
+      const sections = prev.materialSections
+        .filter((s) => s.id !== id)
+        .sort((a, b) => a.order - b.order)
+        .map((s, i) => ({ ...s, order: i }));
+      return {
+        ...prev,
+        materialSections: sections,
+        materials: prev.materials.filter((m) => m.sectionId !== id),
+      };
+    });
+  }, []);
+
+  const reorderMaterialSection = useCallback(
+    (id: string, direction: "up" | "down") => {
+      setContent((prev) => {
+        const sorted = [...prev.materialSections].sort(
+          (a, b) => a.order - b.order,
+        );
+        const idx = sorted.findIndex((s) => s.id === id);
+        if (idx === -1) return prev;
+        const swap = direction === "up" ? idx - 1 : idx + 1;
+        if (swap < 0 || swap >= sorted.length) return prev;
+        [sorted[idx], sorted[swap]] = [sorted[swap], sorted[idx]];
+        sorted.forEach((s, i) => (s.order = i));
+        return { ...prev, materialSections: sorted };
+      });
+    },
+    [],
+  );
+
+  // ---------------------------------------------------------------------
+  // Materials (files)
+  // ---------------------------------------------------------------------
+
+  const addMaterial = useCallback(
+    (
+      sectionId: string,
+      file: {
+        displayName: string;
+        fileName: string;
+        mime: string;
+        size: number;
+        dataUrl: string;
+      },
+    ) => {
+      setContent((prev) => {
+        const ordersInSection = prev.materials.filter(
+          (m) => m.sectionId === sectionId,
+        );
+        const nextOrder = ordersInSection.length;
+        const material: Material = {
+          id: uid("mat"),
+          sectionId,
+          displayName: file.displayName.trim() || file.fileName,
+          fileName: file.fileName,
+          mime: file.mime,
+          size: file.size,
+          dataUrl: file.dataUrl,
+          order: nextOrder,
+          createdAt: Date.now(),
+        };
+        return { ...prev, materials: [...prev.materials, material] };
+      });
+    },
+    [],
+  );
+
+  const renameMaterial = useCallback((id: string, displayName: string) => {
+    const next = displayName.trim();
+    if (!next) return;
+    setContent((prev) => ({
+      ...prev,
+      materials: prev.materials.map((m) =>
+        m.id === id ? { ...m, displayName: next } : m,
+      ),
+    }));
+  }, []);
+
+  const removeMaterial = useCallback((id: string) => {
+    setContent((prev) => {
+      const target = prev.materials.find((m) => m.id === id);
+      if (!target) return prev;
+      const remaining = prev.materials.filter((m) => m.id !== id);
+      // Renumera ordens dentro da seção
+      const renumbered = remaining
+        .filter((m) => m.sectionId === target.sectionId)
+        .sort((a, b) => a.order - b.order)
+        .map((m, i) => ({ ...m, order: i }));
+      const others = remaining.filter((m) => m.sectionId !== target.sectionId);
+      return { ...prev, materials: [...others, ...renumbered] };
+    });
+  }, []);
+
+  const reorderMaterial = useCallback(
+    (id: string, direction: "up" | "down") => {
+      setContent((prev) => {
+        const target = prev.materials.find((m) => m.id === id);
+        if (!target) return prev;
+        const sectionItems = prev.materials
+          .filter((m) => m.sectionId === target.sectionId)
+          .sort((a, b) => a.order - b.order);
+        const idx = sectionItems.findIndex((m) => m.id === id);
+        const swap = direction === "up" ? idx - 1 : idx + 1;
+        if (swap < 0 || swap >= sectionItems.length) return prev;
+        [sectionItems[idx], sectionItems[swap]] = [
+          sectionItems[swap],
+          sectionItems[idx],
+        ];
+        const reordered = sectionItems.map((m, i) => ({ ...m, order: i }));
+        const others = prev.materials.filter(
+          (m) => m.sectionId !== target.sectionId,
+        );
+        return { ...prev, materials: [...others, ...reordered] };
+      });
+    },
+    [],
+  );
+
+  const materialsBySection = useCallback(
+    (sectionId: string): Material[] =>
+      content.materials
+        .filter((m) => m.sectionId === sectionId)
+        .sort((a, b) => a.order - b.order),
+    [content.materials],
+  );
+
+  // ---------------------------------------------------------------------
+  // Decks / flashcards
+  // ---------------------------------------------------------------------
 
   const upsertDeck = useCallback((deck: Deck) => {
     setContent((prev) => {
@@ -280,13 +415,18 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
       content,
       login,
       logout,
-      upsertQuestion,
-      removeQuestion,
       upsertCheckpoint,
       removeCheckpoint,
       reorderCheckpoint,
-      recordAttempt,
       markCheckpointWatched,
+      upsertMaterialSection,
+      removeMaterialSection,
+      reorderMaterialSection,
+      addMaterial,
+      renameMaterial,
+      removeMaterial,
+      reorderMaterial,
+      materialsBySection,
       upsertDeck,
       removeDeck,
       upsertFlashcard,
@@ -302,13 +442,18 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
       content,
       login,
       logout,
-      upsertQuestion,
-      removeQuestion,
       upsertCheckpoint,
       removeCheckpoint,
       reorderCheckpoint,
-      recordAttempt,
       markCheckpointWatched,
+      upsertMaterialSection,
+      removeMaterialSection,
+      reorderMaterialSection,
+      addMaterial,
+      renameMaterial,
+      removeMaterial,
+      reorderMaterial,
+      materialsBySection,
       upsertDeck,
       removeDeck,
       upsertFlashcard,

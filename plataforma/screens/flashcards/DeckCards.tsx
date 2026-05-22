@@ -9,14 +9,14 @@ import { Button } from "../../components/ui/Button";
 import { Icon } from "../../components/ui/Icon";
 import { Tag } from "../../components/ui/Tag";
 import { EmptyState } from "../../components/ui/EmptyState";
-import { AreaSkeleton } from "../../components/skeletons/AreaSkeleton";
+import { MaterialsSkeleton } from "../../components/skeletons/MaterialsSkeleton";
 import { usePlatform } from "../../store/PlatformContext";
 import { platformRoutes } from "../../routes";
 import type { Flashcard, OwnerScope } from "../../types";
 
 export function DeckCards({ scope }: { scope: OwnerScope }) {
   return (
-    <AuthGuard role={scope} fallback={<AreaSkeleton />}>
+    <AuthGuard role={scope} fallback={<MaterialsSkeleton />}>
       <Inner scope={scope} />
     </AuthGuard>
   );
