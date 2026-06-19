@@ -24,13 +24,13 @@ Site institucional de aulas particulares de inglês com **método Oxford** + uma
 | Tipografia | **Inter** via `next/font` | Substituto de SF Pro para o visual Apple |
 | Backend | **Supabase** (Postgres + Auth + Storage) | Banco real multiusuário; acessado direto do client via `@supabase/supabase-js` |
 | Auth | **Supabase Auth** (Google OAuth + e-mail/senha) | Login real; papel (aluno/professor) por allowlist de e-mails |
-| Arquivos | **Supabase Storage** (bucket `materials`, privado) | Upload do professor; download do aluno por signed URL |
+| Arquivos | **Supabase Storage** (bucket `materials`, privado) | Upload do professor (materiais **e vídeos das aulas**); download/streaming do aluno por signed URL |
 | Estado | **React Context** (hidratado do Supabase) | Update otimista local + escrita assíncrona; sem libs externas |
 | Build/run | `npm` | Lockfile padrão |
 
 Node version: testado com Node 22. Dependência runtime principal além de `next/react/react-dom`: `@supabase/supabase-js`.
 
-> **Setup obrigatório do Supabase** (uma vez, fora do código): (1) rodar [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql) no SQL Editor; (2) cadastrar e-mail(s) de professor em `teacher_emails`; (3) no dashboard, ativar provider Google, desligar "Confirm email", e configurar Site URL / Redirect URLs (por ambiente — ver gotcha de produção em §10); (4) preencher `.env` (ver comentários em [.env](.env)) com `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable) — e cadastrar as mesmas na Vercel para produção. A **secret key nunca** vai pro client — o app só usa a publishable; RLS é a barreira de segurança.
+> **Setup obrigatório do Supabase** (uma vez, fora do código): (1) rodar [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql) **e depois** [0002_checkpoint_video_upload.sql](supabase/migrations/0002_checkpoint_video_upload.sql) no SQL Editor; (2) cadastrar e-mail(s) de professor em `teacher_emails`; (3) no dashboard, ativar provider Google, desligar "Confirm email", e configurar Site URL / Redirect URLs (por ambiente — ver gotcha de produção em §10); (4) preencher `.env` (ver comentários em [.env](.env)) com `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable) — e cadastrar as mesmas na Vercel para produção. A **secret key nunca** vai pro client — o app só usa a publishable; RLS é a barreira de segurança.
 
 ---
 
@@ -294,6 +294,20 @@ Para mudar o algoritmo: edite só `scheduler.ts`. As ações do store (`reviewFl
 
 Removido. Com banco real e multiusuário, não há mais "restaurar seeds" — cada usuário começa vazio e cria o próprio conteúdo, persistido no Supabase. Os arquivos `seeds.ts`/`storage.ts` viraram stubs deprecados (mantidos só para não quebrar imports históricos).
 
+### 6.6 Aulas gravadas — vídeo por upload (não por link)
+
+O professor **envia o arquivo de vídeo** da aula (não cola mais um link externo). O `Checkpoint` tem:
+
+- `videoPath?: string` — caminho do vídeo no bucket `materials` do Storage (caminho `checkpoints/<checkpointId>/<uuid>-<nome>`). **Forma atual** de anexar vídeo.
+- `videoUrl: string` — link externo (YouTube/Vimeo/.mp4). **Legado/fallback**: ainda toca para checkpoints antigos, mas o editor não expõe mais o campo.
+
+**Upload**: feito em [CheckpointEditor.tsx](plataforma/components/CheckpointEditor.tsx) (`supabase.storage.from('materials').upload(...)`) **antes** de chamar `upsertCheckpoint`. O id do checkpoint é fixado no mount (`useState(existing?.id || uid("c"))`) para compor o caminho do Storage antes do save. Trocar o vídeo remove o objeto anterior; `removeCheckpoint` (no [PlatformContext.tsx](plataforma/store/PlatformContext.tsx)) apaga o vídeo do Storage junto com a linha.
+
+**Player**: [VideoEmbed.tsx](plataforma/components/VideoEmbed.tsx) — quando há `path`, gera uma **signed URL** (1h) e toca no `<video>` nativo; sem `path`, cai no fluxo legado de `url` (embed YouTube/Vimeo, vídeo nativo por extensão, ou link). `path` tem prioridade sobre `url`.
+
+- **Limite por vídeo**: `MAX_VIDEO_BYTES = 500MB` em [CheckpointEditor.tsx](plataforma/components/CheckpointEditor.tsx).
+- ⚠️ **Plano free do Supabase**: o teto global de upload é **50MB**, independente do `file_size_limit` do bucket. Vídeos maiores exigem plano pago (bucket vale até 50GB). A migração `0002` sobe o `file_size_limit` do bucket `materials` para 500MB.
+
 ---
 
 ## 7. Roteamento
@@ -369,6 +383,8 @@ Não tem testes hoje. Validação é via:
    - **Gotcha operacional (Google OAuth)**: o "Authorized redirect URI" no Google Cloud Console deve ser `https://<project-ref>.supabase.co/auth/v1/callback` (o callback do Supabase, **não** `/api/auth/...`); a URL do app (`/plataforma`) vai nas Redirect URLs do Supabase. Setup nos comentários de [.env](.env).
    - **Gotcha de produção (Site URL fallback)**: o Supabase usa o **Site URL** como fallback de redirect quando o `redirect_to` enviado não está na allowlist. Se o Site URL for `http://localhost:3000` (default), o login com Google **em produção volta pra localhost** e quebra. Corrigir em Authentication → URL Configuration: **Site URL = domínio de prod** (`https://reinaldo-montes.vercel.app`) e **Redirect URLs** com `https://reinaldo-montes.vercel.app/plataforma` + `http://localhost:3000/plataforma`. As env `NEXT_PUBLIC_*` precisam estar cadastradas na Vercel (o `.env` é só local). O código (`redirectTo: ${window.location.origin}/plataforma`) já está correto — isso é só config.
 
+8. **Vídeo das aulas por upload (jun/2026)** — As aulas gravadas deixaram de receber **link externo** e passaram a aceitar **upload do arquivo de vídeo** (§6.6). O vídeo vai pro mesmo bucket `materials` (caminho `checkpoints/...`), o aluno assiste por **signed URL** no `<video>` nativo. Mudanças: novo campo `Checkpoint.videoPath` (+ coluna `video_path`, mappers); [CheckpointEditor.tsx](plataforma/components/CheckpointEditor.tsx) com dropzone de upload no lugar do campo de URL; [VideoEmbed.tsx](plataforma/components/VideoEmbed.tsx) resolve signed URL quando há `path` (link externo vira fallback legado); `removeCheckpoint` apaga o vídeo do Storage; migração [0002_checkpoint_video_upload.sql](supabase/migrations/0002_checkpoint_video_upload.sql) adiciona a coluna e sobe o `file_size_limit` do bucket p/ 500MB. ⚠️ Plano free do Supabase trava upload em 50MB.
+
 ---
 
 ## 11. Convenções de código — coisas que importam
@@ -426,7 +442,7 @@ O backend real **já está integrado** (§6, §6.1, §6.3). Pontos de extensão:
 - **Sem i18n** — strings hardcoded em PT-BR. Se for internacionalizar, considerar `next-intl`.
 - **Sem analytics, sem PWA, sem SEO sitemap** — fora do escopo atual.
 - **Não há paginação** em listas de materiais/cartas — assume volume baixo (dezenas). Para centenas+, considerar virtualização.
-- **Vídeos das aulas gravadas por URL** (YouTube/Vimeo/mp4); cartas continuam sendo só texto.
+- **Vídeos das aulas gravadas por upload** (Storage + signed URL; veja §6.6). Links externos (YouTube/Vimeo/mp4) ainda tocam como fallback legado, mas não há mais campo de URL no editor. Cartas continuam sendo só texto. Limite de 500MB por vídeo (efetivo só em plano pago do Supabase — free trava em 50MB).
 - **Renomear arquivo usa `window.prompt`** em [TeacherMaterials.tsx](plataforma/screens/teacher/TeacherMaterials.tsx) — funcional, mas mobile dá UX ruim em alguns browsers. Considerar modal próprio se virar dor.
 
 ---
@@ -439,7 +455,8 @@ O backend real **já está integrado** (§6, §6.1, §6.3). Pontos de extensão:
 | Adicionar seção na landing | Criar em [components/](components/), incluir em [app/page.tsx](app/page.tsx) |
 | Autorizar um e-mail como professor | `insert into teacher_emails ...` no SQL Editor do Supabase |
 | Mudar/alterar o schema do banco | [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql) (rodar no SQL Editor) + mappers em [plataforma/supabase/mappers.ts](plataforma/supabase/mappers.ts) |
-| Aumentar/diminuir limite de upload | `MAX_FILE_BYTES` em [plataforma/screens/teacher/TeacherMaterials.tsx](plataforma/screens/teacher/TeacherMaterials.tsx) |
+| Aumentar/diminuir limite de upload de materiais | `MAX_FILE_BYTES` em [plataforma/screens/teacher/TeacherMaterials.tsx](plataforma/screens/teacher/TeacherMaterials.tsx) |
+| Aumentar/diminuir limite de upload de vídeo da aula | `MAX_VIDEO_BYTES` em [plataforma/components/CheckpointEditor.tsx](plataforma/components/CheckpointEditor.tsx) (+ `file_size_limit` do bucket na migração) |
 | Mudar algoritmo de repetição | [plataforma/scheduler.ts](plataforma/scheduler.ts) |
 | Adicionar nav item na sidebar | `getNav()` em [plataforma/components/Sidebar.tsx](plataforma/components/Sidebar.tsx) + `<PillLink>` em [Topbar.tsx](plataforma/components/Topbar.tsx) |
 | Adicionar campo num formulário | Editor correspondente em [plataforma/components/](plataforma/components/) — adicionar state, Field, validar em `save()` |
@@ -484,4 +501,4 @@ Para testar mobile: use DevTools → device mode com 320px, 375px, 414px, 768px,
 
 ---
 
-Última atualização: 2026-06-18. Ao mexer no sistema, **atualize este arquivo** se mudar algo arquitetural.
+Última atualização: 2026-06-19. Ao mexer no sistema, **atualize este arquivo** se mudar algo arquitetural.

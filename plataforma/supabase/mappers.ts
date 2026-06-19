@@ -29,6 +29,7 @@ export type CheckpointRow = {
   title: string;
   description: string;
   video_url: string;
+  video_path: string;
   duration_min: number | null;
   order: number;
   created_at: string;
@@ -40,6 +41,7 @@ export function rowToCheckpoint(r: CheckpointRow): Checkpoint {
     title: r.title,
     description: r.description,
     videoUrl: r.video_url,
+    videoPath: r.video_path || undefined,
     durationMin: r.duration_min ?? undefined,
     order: r.order,
     createdAt: toMs(r.created_at),
@@ -52,6 +54,7 @@ export function checkpointToRow(c: Checkpoint) {
     title: c.title,
     description: c.description,
     video_url: c.videoUrl,
+    video_path: c.videoPath ?? "",
     duration_min: c.durationMin ?? null,
     order: c.order,
   };

@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+import { getSupabase } from "../supabase/client";
 import { Icon } from "./ui/Icon";
 
 function toYoutubeEmbed(url: string): string | null {
@@ -26,21 +28,79 @@ function toYoutubeEmbed(url: string): string | null {
   }
 }
 
-export function VideoEmbed({ url, title }: { url: string; title?: string }) {
-  if (!url) {
+function Placeholder({ text }: { text: string }) {
+  return (
+    <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[color:var(--p-hairline-strong)] bg-[color:var(--p-surface-2)] px-6 text-center">
+      <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white border border-[color:var(--p-hairline)] text-[color:var(--p-muted)]">
+        <Icon name="film" size={22} />
+      </span>
+      <p className="text-[13px] sm:text-[14px] font-medium text-[color:var(--p-fg)]">
+        {text}
+      </p>
+      <p className="max-w-xs text-[12px] text-[color:var(--p-muted)]">
+        O professor pode adicionar o vídeo desta aula a qualquer momento.
+      </p>
+    </div>
+  );
+}
+
+/** Vídeo enviado ao Storage: resolve uma signed URL e toca no player nativo. */
+function UploadedVideo({ path, title }: { path: string; title?: string }) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    setSignedUrl(null);
+    setError(false);
+    getSupabase()
+      .storage.from("materials")
+      .createSignedUrl(path, 60 * 60) // 1h
+      .then(({ data, error }) => {
+        if (!active) return;
+        if (error || !data?.signedUrl) setError(true);
+        else setSignedUrl(data.signedUrl);
+      });
+    return () => {
+      active = false;
+    };
+  }, [path]);
+
+  if (error) {
+    return <Placeholder text="Não foi possível carregar o vídeo" />;
+  }
+  if (!signedUrl) {
     return (
-      <div className="flex aspect-video w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-[color:var(--p-hairline-strong)] bg-[color:var(--p-surface-2)] px-6 text-center">
-        <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white border border-[color:var(--p-hairline)] text-[color:var(--p-muted)]">
-          <Icon name="film" size={22} />
-        </span>
-        <p className="text-[13px] sm:text-[14px] font-medium text-[color:var(--p-fg)]">
-          Vídeo ainda não anexado
-        </p>
-        <p className="max-w-xs text-[12px] text-[color:var(--p-muted)]">
-          O professor pode adicionar o vídeo desta aula a qualquer momento.
-        </p>
-      </div>
+      <div className="aspect-video w-full rounded-2xl border border-[color:var(--p-hairline)] bg-black p-skel" />
     );
+  }
+  return (
+    <video
+      controls
+      controlsList="nodownload"
+      title={title}
+      className="w-full aspect-video rounded-2xl border border-[color:var(--p-hairline)] bg-black"
+      src={signedUrl}
+    />
+  );
+}
+
+export function VideoEmbed({
+  url,
+  path,
+  title,
+}: {
+  url?: string;
+  path?: string;
+  title?: string;
+}) {
+  // Vídeo enviado pelo professor tem prioridade sobre link externo.
+  if (path) {
+    return <UploadedVideo path={path} title={title} />;
+  }
+
+  if (!url) {
+    return <Placeholder text="Vídeo ainda não anexado" />;
   }
 
   const embed = toYoutubeEmbed(url);

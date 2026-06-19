@@ -10,7 +10,10 @@ export type Checkpoint = {
   id: string;
   title: string;
   description: string;
+  /** Link externo (YouTube/Vimeo/.mp4) — legado/fallback. */
   videoUrl: string;
+  /** Caminho do vídeo enviado pelo professor no bucket "materials" do Storage. */
+  videoPath?: string;
   durationMin?: number;
   order: number;
   createdAt: number;

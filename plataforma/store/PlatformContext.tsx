@@ -433,6 +433,7 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
   const removeCheckpoint = useCallback(
     (id: string) => {
       const prev = contentRef.current;
+      const target = prev.checkpoints.find((c) => c.id === id);
       const checkpoints = prev.checkpoints
         .filter((c) => c.id !== id)
         .sort((a, b) => a.order - b.order)
@@ -443,6 +444,11 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
         watchedCheckpointIds: prev.watchedCheckpointIds.filter((x) => x !== id),
       });
       write(async () => {
+        if (target?.videoPath) {
+          await getSupabase()
+            .storage.from("materials")
+            .remove([target.videoPath]);
+        }
         const del = await getSupabase()
           .from("checkpoints")
           .delete()

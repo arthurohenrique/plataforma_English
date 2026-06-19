@@ -107,6 +107,7 @@ create table if not exists public.checkpoints (
   title        text not null,
   description  text not null default '',
   video_url    text not null default '',
+  video_path   text not null default '',
   duration_min int,
   "order"      int not null default 0,
   created_at   timestamptz not null default now()
@@ -235,9 +236,16 @@ create policy "watched_owner_all" on public.watched_checkpoints
 -- Leitura: qualquer autenticado (download por signed URL).
 -- Escrita: só professor.
 -- =====================================================================
-insert into storage.buckets (id, name, public)
-values ('materials', 'materials', false)
+-- file_size_limit: 500MB — comporta vídeos de aulas gravadas além de PDFs/áudios.
+-- (No plano free do Supabase o teto global de upload é 50MB; em planos pagos
+--  este limite por bucket vale até 50GB.)
+insert into storage.buckets (id, name, public, file_size_limit)
+values ('materials', 'materials', false, 524288000)
 on conflict (id) do nothing;
+
+update storage.buckets
+  set file_size_limit = 524288000
+  where id = 'materials' and coalesce(file_size_limit, 0) < 524288000;
 
 drop policy if exists "materials_read_authenticated" on storage.objects;
 create policy "materials_read_authenticated" on storage.objects

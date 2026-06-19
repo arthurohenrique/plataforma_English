@@ -41,7 +41,11 @@ export function CheckpointTimeline({
       <section className="order-1 lg:order-2 lg:col-span-7 xl:col-span-8 min-w-0">
         {selected && (
           <div className="p-fade-in">
-            <VideoEmbed url={selected.videoUrl} title={selected.title} />
+            <VideoEmbed
+              url={selected.videoUrl}
+              path={selected.videoPath}
+              title={selected.title}
+            />
             <div className="mt-4 sm:mt-5 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
               <div className="min-w-0">
                 <Tag tone="neutral">Aula {selected.order + 1}</Tag>
