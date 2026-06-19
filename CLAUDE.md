@@ -30,7 +30,7 @@ Site institucional de aulas particulares de inglês com **método Oxford** + uma
 
 Node version: testado com Node 22. Dependência runtime principal além de `next/react/react-dom`: `@supabase/supabase-js`.
 
-> **Setup obrigatório do Supabase** (uma vez, fora do código): (1) rodar [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql) no SQL Editor; (2) cadastrar e-mail(s) de professor em `teacher_emails`; (3) no dashboard, ativar provider Google, desligar "Confirm email", e configurar Site URL / Redirect URLs; (4) preencher `.env.local` (ver [.env.local.example](.env.local.example)) com `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable). A **secret key nunca** vai pro client — o app só usa a publishable; RLS é a barreira de segurança.
+> **Setup obrigatório do Supabase** (uma vez, fora do código): (1) rodar [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql) no SQL Editor; (2) cadastrar e-mail(s) de professor em `teacher_emails`; (3) no dashboard, ativar provider Google, desligar "Confirm email", e configurar Site URL / Redirect URLs (por ambiente — ver gotcha de produção em §10); (4) preencher `.env` (ver comentários em [.env](.env)) com `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable) — e cadastrar as mesmas na Vercel para produção. A **secret key nunca** vai pro client — o app só usa a publishable; RLS é a barreira de segurança.
 
 ---
 
@@ -105,7 +105,7 @@ Node version: testado com Node 22. Dependência runtime principal além de `next
 │       └── flashcards/ ← List, DeckOverview, DeckStudy, DeckCards (compartilhadas via prop `scope`)
 │
 ├── supabase/migrations/0001_init.sql  ← Schema + RLS + trigger de papel + bucket (rodar no SQL Editor)
-├── .env.local.example                 ← Variáveis + passo a passo de setup do Supabase
+├── .env                               ← Variáveis públicas (URL + publishable) + setup nos comentários
 └── CLAUDE.md (este arquivo)
 ```
 
@@ -366,7 +366,8 @@ Não tem testes hoje. Validação é via:
    - **Progresso por usuário**: aulas assistidas e scheduling dos flashcards persistidos por usuário. `Deck.ownerUsername` virou `ownerId`; decks privados por usuário via RLS. Removido o "Restaurar seeds" (não faz sentido multiusuário); `seeds.ts`/`storage.ts` viraram stubs.
    - **Padrão de escrita**: optimista local + `write()` assíncrono; reload da entidade em erro. IDs são UUID client-side (`uid()`).
    - **Correções na mesma leva**: navegação interna toda via `<Link>` (atalhos do dashboard faziam full reload); restauração de sessão semeada por `getSession()` ignorando o `INITIAL_SESSION` null (que chutava o usuário pro login); `FlashcardReviewer` agora congela a fila no início da sessão (antes pulava cartas ao acertar/fácil); mappers deixaram de reenviar `created_at` nos upserts (evita drift do timestamp); `logout` reseta o id carregado.
-   - **Gotcha operacional (Google OAuth)**: o "Authorized redirect URI" no Google Cloud Console deve ser `https://<project-ref>.supabase.co/auth/v1/callback` (o callback do Supabase, **não** `/api/auth/...`); a URL do app (`/plataforma`) vai nas Redirect URLs do Supabase. Setup completo no topo de [.env.local.example](.env.local.example).
+   - **Gotcha operacional (Google OAuth)**: o "Authorized redirect URI" no Google Cloud Console deve ser `https://<project-ref>.supabase.co/auth/v1/callback` (o callback do Supabase, **não** `/api/auth/...`); a URL do app (`/plataforma`) vai nas Redirect URLs do Supabase. Setup nos comentários de [.env](.env).
+   - **Gotcha de produção (Site URL fallback)**: o Supabase usa o **Site URL** como fallback de redirect quando o `redirect_to` enviado não está na allowlist. Se o Site URL for `http://localhost:3000` (default), o login com Google **em produção volta pra localhost** e quebra. Corrigir em Authentication → URL Configuration: **Site URL = domínio de prod** (`https://reinaldo-montes.vercel.app`) e **Redirect URLs** com `https://reinaldo-montes.vercel.app/plataforma` + `http://localhost:3000/plataforma`. As env `NEXT_PUBLIC_*` precisam estar cadastradas na Vercel (o `.env` é só local). O código (`redirectTo: ${window.location.origin}/plataforma`) já está correto — isso é só config.
 
 ---
 
