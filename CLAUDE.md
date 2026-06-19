@@ -8,7 +8,7 @@ Este documento é o briefing que você (próximo agente trabalhando neste reposi
 
 ## 1. O produto, em uma frase
 
-Site institucional de aulas particulares de inglês com **método Oxford** + uma **plataforma de estudos** acoplada (biblioteca de **materiais** para download organizados pelo professor, **aulas gravadas** em cronologia, e **flashcards** com repetição espaçada). O dono é um professor particular; alunos entram via login fake e consomem o conteúdo que o professor publica.
+Site institucional de aulas particulares de inglês com **método Oxford** + uma **plataforma de estudos** acoplada (biblioteca de **materiais** para download organizados pelo professor, **aulas gravadas** em cronologia, e **flashcards** com repetição espaçada). O dono é um professor particular; alunos se cadastram com **login real (Supabase Auth — Google ou e-mail/senha)** e consomem o conteúdo que o professor publica. O papel professor/aluno vem de uma allowlist de e-mails no banco (§6.1).
 
 > ⚠️ **Histórico**: até maio/2026 a plataforma tinha um sistema de "áreas de estudo" com **exercícios/desafios interativos** (múltipla escolha e aberta) criados pelo professor. Esse módulo foi **removido por completo** e substituído pela biblioteca de materiais. Se você for migrar dados antigos, os campos `questions`/`attempts` em `localStorage` são silenciosamente ignorados — veja o `useEffect` de hidratação em [PlatformContext.tsx](plataforma/store/PlatformContext.tsx).
 
@@ -22,11 +22,15 @@ Site institucional de aulas particulares de inglês com **método Oxford** + uma
 | Linguagem | **TypeScript** strict | Contratos explícitos no módulo da plataforma |
 | Estilos | **Tailwind v4** (CSS-first config) | Velocidade + tokens via `@theme inline` |
 | Tipografia | **Inter** via `next/font` | Substituto de SF Pro para o visual Apple |
-| Persistência | **`localStorage`** (sem backend) | Demo/protótipo; trocável por API sem mudar UI |
-| Estado | **React Context** + reducer manual | Sem libs externas (Zustand/Redux) — escopo pequeno |
+| Backend | **Supabase** (Postgres + Auth + Storage) | Banco real multiusuário; acessado direto do client via `@supabase/supabase-js` |
+| Auth | **Supabase Auth** (Google OAuth + e-mail/senha) | Login real; papel (aluno/professor) por allowlist de e-mails |
+| Arquivos | **Supabase Storage** (bucket `materials`, privado) | Upload do professor; download do aluno por signed URL |
+| Estado | **React Context** (hidratado do Supabase) | Update otimista local + escrita assíncrona; sem libs externas |
 | Build/run | `npm` | Lockfile padrão |
 
-Node version: testado com Node 22. Sem `package.json` exótico — tudo é `next/react/react-dom` + tipos.
+Node version: testado com Node 22. Dependência runtime principal além de `next/react/react-dom`: `@supabase/supabase-js`.
+
+> **Setup obrigatório do Supabase** (uma vez, fora do código): (1) rodar [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql) no SQL Editor; (2) cadastrar e-mail(s) de professor em `teacher_emails`; (3) no dashboard, ativar provider Google, desligar "Confirm email", e configurar Site URL / Redirect URLs; (4) preencher `.env.local` (ver [.env.local.example](.env.local.example)) com `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable). A **secret key nunca** vai pro client — o app só usa a publishable; RLS é a barreira de segurança.
 
 ---
 
@@ -73,9 +77,13 @@ Node version: testado com Node 22. Sem `package.json` exótico — tudo é `next
 │   ├── styles.css          ← Tokens scoped em [data-platform]
 │   │
 │   ├── store/
-│   │   ├── PlatformContext.tsx   ← Provider + reducer + ações
-│   │   ├── storage.ts            ← Helpers de localStorage
-│   │   └── seeds.ts              ← Dados de exemplo iniciais
+│   │   ├── PlatformContext.tsx   ← Provider + auth Supabase + ações (optimista + write())
+│   │   ├── storage.ts            ← DEPRECATED (era localStorage; stub vazio)
+│   │   └── seeds.ts              ← DEPRECATED (seeds removidos; stub vazio)
+│   │
+│   ├── supabase/
+│   │   ├── client.ts             ← Singleton do browser client (publishable key)
+│   │   └── mappers.ts            ← row (snake_case/ISO) ↔ tipo (camelCase/epoch-ms)
 │   │
 │   ├── components/
 │   │   ├── PlatformShell.tsx     ← Sidebar + Topbar + main
@@ -93,9 +101,11 @@ Node version: testado com Node 22. Sem `package.json` exótico — tudo é `next
 │       ├── LoginScreen.tsx
 │       ├── student/   ← Dashboard, Materials, Classes
 │       ├── teacher/   ← Dashboard, Materials, Classes
-│       │   └── materialUtils.ts  ← formatBytes, fileToDataUrl (compartilhado com StudentMaterials)
+│       │   └── materialUtils.ts  ← formatBytes (compartilhado com StudentMaterials)
 │       └── flashcards/ ← List, DeckOverview, DeckStudy, DeckCards (compartilhadas via prop `scope`)
 │
+├── supabase/migrations/0001_init.sql  ← Schema + RLS + trigger de papel + bucket (rodar no SQL Editor)
+├── .env.local.example                 ← Variáveis + passo a passo de setup do Supabase
 └── CLAUDE.md (este arquivo)
 ```
 
@@ -199,20 +209,22 @@ type ContentState = {
 };
 ```
 
-Persistido em `localStorage` sob a chave `platform.content.v1`. Auth em `platform.auth.v1`.
+**Onde vive agora**: cada campo de `ContentState` mapeia para uma tabela no Postgres do Supabase (`checkpoints`, `material_sections`, `materials`, `watched_checkpoints`, `decks`, `flashcards`). O [PlatformContext.tsx](plataforma/store/PlatformContext.tsx) carrega tudo via `@supabase/supabase-js` quando a sessão autentica, monta o `ContentState` (mappers em [plataforma/supabase/mappers.ts](plataforma/supabase/mappers.ts) convertem snake_case/timestamptz ↔ camelCase/epoch-ms) e mantém um estado React. **`localStorage` não é mais usado** para conteúdo/auth (o supabase-js guarda só a sessão de auth). O schema completo (tabelas + RLS + trigger + bucket) está em [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql).
 
-**Forward-compatibility**: ao hidratar de versões antigas, fields faltantes recebem seed defaults; campos legados (`questions`, `attempts`) são **silenciosamente descartados** — veja `useEffect` em [PlatformContext.tsx](plataforma/store/PlatformContext.tsx). Isso preserva decks/flashcards/checkpoints criados em versões anteriores.
+**Padrão de escrita**: as ações do contexto (`upsert*`, `remove*`, `reorder*`, `review*`, etc.) fazem **update otimista** no estado local e disparam a escrita assíncrona no Supabase via helper `write()`; se a escrita falhar, `reload()` ressincroniza a entidade do servidor. IDs são UUIDs gerados no client (`uid()` → `crypto.randomUUID()`), então o insert otimista já usa o id final.
 
-### 6.1 Auth fake
+### 6.1 Auth real (Supabase Auth)
 
-Tela de login aceita **qualquer caractere** como username, mais um `role: "aluno" | "professor"`. Não há senha. Auth é só `{ username, role }` em localStorage.
+Login por **e-mail/senha** ou **Google OAuth** (PKCE, redirect de volta para `/plataforma` — sem route handler dedicado; o client detecta a sessão na URL). O `PlatformContext` assina `onAuthStateChange`, busca o `profiles` do usuário e monta `AuthState = { userId, username, role }`.
 
-Para adicionar auth real: substituir `login/logout` no `PlatformContext` por chamadas HTTP. UI não precisa mudar.
+**Papel (aluno/professor)** é definido no banco: um trigger `on_auth_user_created` cria o `profiles` no signup com `role = 'professor'` se o e-mail estiver na tabela `teacher_emails`, senão `'aluno'`. **A tela de login não escolhe perfil** — o aluno não consegue se tornar professor sozinho. Para autorizar um professor, insira o e-mail em `teacher_emails` (SQL).
+
+Ações expostas: `signInWithPassword`, `signUpWithPassword`, `signInWithGoogle`, `logout`. A confirmação de e-mail está desligada no dashboard (signup entra direto).
 
 ### 6.2 Separação aluno × professor
 
-- Decks têm `ownerScope: "aluno" | "professor"`.
-- `decksByScope(scope)` filtra: aluno só vê decks de aluno; professor só vê decks de professor. **Não há overlap por design** (requisito do usuário).
+- Decks têm `ownerScope: "aluno" | "professor"` e `ownerId` (id do usuário dono). **São privados por usuário**: cada aluno vê só os seus decks; o professor vê só os dele (RLS no banco: `owner_id = auth.uid()`). **Não há overlap por design** (requisito do usuário).
+- `decksByScope(scope)` filtra o estado já carregado (que vem só com os decks do usuário logado).
 - Telas de Flashcards são compartilhadas: `<FlashcardsList scope="aluno" />` vs `scope="professor"` — apenas a prop muda.
 - Materiais/Aulas: o professor cria, o aluno consome (compartilhado entre roles). Apenas decks de flashcards são privados por scope.
 
@@ -236,7 +248,7 @@ type Material = {
   fileName: string;    // nome do arquivo original do upload
   mime: string;
   size: number;        // bytes
-  dataUrl: string;     // base64 do conteúdo
+  storagePath: string; // caminho no bucket "materials" do Supabase Storage
   order: number;       // ordem dentro da seção
   createdAt: number;
 };
@@ -255,14 +267,14 @@ Ações expostas pelo `PlatformContext`:
 | `reorderMaterial(id, dir)` | Sobe/desce uma posição dentro da seção |
 | `materialsBySection(sectionId)` | Helper memoizado: retorna arquivos da seção ordenados por `order` |
 
-**Onde os bytes ficam**: o conteúdo do arquivo é armazenado como **data URL base64** dentro do próprio `Material.dataUrl`, persistido em `localStorage`. Isso significa duas restrições importantes:
+**Onde os bytes ficam**: o conteúdo do arquivo vai para o **Supabase Storage** (bucket privado `materials`); o banco guarda só `storage_path` + metadados. O upload é feito na tela [TeacherMaterials.tsx](plataforma/screens/teacher/TeacherMaterials.tsx) (`supabase.storage.from('materials').upload(...)`, caminho `<sectionId>/<uuid>-<nome>`) **antes** de chamar `addMaterial`. Remover seção/arquivo apaga também o objeto no Storage (`.remove(paths)`).
 
-- **Limite prático de ~5MB por arquivo** (validado em [TeacherMaterials.tsx](plataforma/screens/teacher/TeacherMaterials.tsx) via `MAX_FILE_BYTES`). Mostra erro inline se ultrapassar.
-- **Limite total de ~5–10MB** por origem no localStorage (varia por navegador). Não há quota global aplicada no código — se o `setItem` falhar, o React vai estourar erro em `saveContent`. Para volumes maiores, ver §11.6 (plugar backend).
+- **Limite por arquivo**: `MAX_FILE_BYTES = 50MB` em [TeacherMaterials.tsx](plataforma/screens/teacher/TeacherMaterials.tsx) (erro inline se ultrapassar). Storage suporta bem mais — ajuste à vontade.
+- **Sem limite de localStorage** — o gargalo de ~5MB desapareceu.
 
-**Download no aluno**: simplesmente `<a href={dataUrl} download={displayName}>` — sem JS extra, sem `URL.createObjectURL`. O nome do arquivo salvo no disco do aluno é o `displayName` (apelido editado pelo professor).
+**Download no aluno**: gera uma **signed URL** na hora (`createSignedUrl(storagePath, 60, { download: displayName })`) e dispara o download via `<a>` temporário (bucket é privado; só autenticados leem). O nome salvo no disco é o `displayName`.
 
-**Helpers**: `formatBytes` (escala B/KB/MB/GB) e `fileToDataUrl` (wrap em volta de `FileReader.readAsDataURL`) vivem em [plataforma/screens/teacher/materialUtils.ts](plataforma/screens/teacher/materialUtils.ts) e são reaproveitados pela tela do aluno.
+**Helpers**: `formatBytes` (escala B/KB/MB/GB) vive em [plataforma/screens/teacher/materialUtils.ts](plataforma/screens/teacher/materialUtils.ts) e é reaproveitado pela tela do aluno.
 
 ### 6.4 Spaced repetition — algoritmo
 
@@ -280,7 +292,7 @@ Para mudar o algoritmo: edite só `scheduler.ts`. As ações do store (`reviewFl
 
 ### 6.5 Reset
 
-`resetAllContent()` restaura o `SEED_CONTENT` — acessível via botão "Restaurar seeds" no painel do professor.
+Removido. Com banco real e multiusuário, não há mais "restaurar seeds" — cada usuário começa vazio e cria o próprio conteúdo, persistido no Supabase. Os arquivos `seeds.ts`/`storage.ts` viraram stubs deprecados (mantidos só para não quebrar imports históricos).
 
 ---
 
@@ -345,7 +357,16 @@ Não tem testes hoje. Validação é via:
 3. **Remoção de emojis + textos de demo + skeleton loading** — Sistema `<Icon>` com 23+ SVGs outline, remoção de "Modo de demonstração", skeletons cinematográficos com shimmer.
 4. **Responsividade** — `clamp()` em todos os headlines, container padding ajustado, Topbar mobile reorganizado, CheckpointTimeline com player-first em mobile, safe-area-inset, viewport.
 5. **Flashcards / spaced repetition** — Decks separados por ownerScope (aluno/professor), scheduler SM-2 simplificado (3 botões), telas List/Overview/Study/Cards compartilhadas via prop `scope`, integração nos dashboards e nav.
-6. **Materiais substituem áreas/exercícios (mai/2026)** — Removido o módulo inteiro de "áreas de estudo com desafios" (tipos `Question`/`Attempt`/`Area`, componentes `ExerciseRunner`/`ExerciseEditor`/`AreaCard`/`AreaSkeleton`, telas `StudentArea`/`TeacherArea`, lista predefinida `AREAS`, rotas `/area/[areaId]`). Em troca: **biblioteca de materiais** — o professor cria seções (com nome, descrição e ordem definida por ele) e anexa arquivos (PDF/áudio/imagem/planilha/etc.) que o aluno baixa direto. Conteúdo do arquivo guardado como data URL base64 em `localStorage` (limite prático de 5MB/arquivo). Novas telas `StudentMaterials`/`TeacherMaterials`, novo skeleton `MaterialsSkeleton`, novos ícones `folder`/`download`/`upload`/`trash`, novas rotas `/materiais` em ambos os scopes. Forward-compat: estados antigos com `questions`/`attempts` continuam carregando — esses campos são silenciosamente descartados na hidratação.
+6. **Materiais substituem áreas/exercícios (mai/2026)** — Removido o módulo inteiro de "áreas de estudo com desafios" (tipos `Question`/`Attempt`/`Area`, componentes `ExerciseRunner`/`ExerciseEditor`/`AreaCard`/`AreaSkeleton`, telas `StudentArea`/`TeacherArea`, lista predefinida `AREAS`, rotas `/area/[areaId]`). Em troca: **biblioteca de materiais** — o professor cria seções (com nome, descrição e ordem definida por ele) e anexa arquivos (PDF/áudio/imagem/planilha/etc.) que o aluno baixa direto. Novas telas `StudentMaterials`/`TeacherMaterials`, novo skeleton `MaterialsSkeleton`, novos ícones `folder`/`download`/`upload`/`trash`, novas rotas `/materiais` em ambos os scopes.
+
+7. **Backend real: Supabase (jun/2026)** — Trocada toda a camada de persistência de `localStorage` por **Supabase** (Postgres + Auth + Storage), mantendo a interface do `PlatformContext` (telas quase intactas). O que entrou:
+   - **Auth real**: Google OAuth + e-mail/senha. `LoginScreen` reescrita (sem mais seletor de perfil). Papel definido por trigger via `teacher_emails` (§6.1). Confirmação de e-mail desligada no dashboard.
+   - **Dados no Postgres**: tabelas `profiles`, `checkpoints`, `material_sections`, `materials`, `decks`, `flashcards`, `watched_checkpoints` com RLS. Schema em [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql). Novos arquivos [plataforma/supabase/client.ts](plataforma/supabase/client.ts) e [mappers.ts](plataforma/supabase/mappers.ts).
+   - **Arquivos no Storage** (bucket privado `materials`): upload pelo professor, download por signed URL no aluno. `Material.dataUrl` (base64) virou `Material.storagePath`. Limite subiu p/ 50MB.
+   - **Progresso por usuário**: aulas assistidas e scheduling dos flashcards persistidos por usuário. `Deck.ownerUsername` virou `ownerId`; decks privados por usuário via RLS. Removido o "Restaurar seeds" (não faz sentido multiusuário); `seeds.ts`/`storage.ts` viraram stubs.
+   - **Padrão de escrita**: optimista local + `write()` assíncrono; reload da entidade em erro. IDs são UUID client-side (`uid()`).
+   - **Correções na mesma leva**: navegação interna toda via `<Link>` (atalhos do dashboard faziam full reload); restauração de sessão semeada por `getSession()` ignorando o `INITIAL_SESSION` null (que chutava o usuário pro login); `FlashcardReviewer` agora congela a fila no início da sessão (antes pulava cartas ao acertar/fácil); mappers deixaram de reenviar `created_at` nos upserts (evita drift do timestamp); `logout` reseta o id carregado.
+   - **Gotcha operacional (Google OAuth)**: o "Authorized redirect URI" no Google Cloud Console deve ser `https://<project-ref>.supabase.co/auth/v1/callback` (o callback do Supabase, **não** `/api/auth/...`); a URL do app (`/plataforma`) vai nas Redirect URLs do Supabase. Setup completo no topo de [.env.local.example](.env.local.example).
 
 ---
 
@@ -375,13 +396,15 @@ Em screens dinâmicas, use **`useParams()` de `next/navigation`** (client). Evit
 
 Não há lista hardcoded — é tudo runtime. Como professor: vá em `/plataforma/professor/materiais`, "Nova seção", preencha título e descrição. A ordem é definida com setas ↑/↓; o aluno vê na mesma ordem.
 
-Se quiser **seeds adicionais** (seções pré-criadas que aparecem ao "Restaurar seeds"), edite `materialSections` em [plataforma/store/seeds.ts](plataforma/store/seeds.ts).
+Não há mais "Restaurar seeds" (removido na migração p/ Supabase). Cada usuário começa vazio e cria o próprio conteúdo. `seeds.ts` é um stub deprecado.
 
-### 11.6 Plugar backend real
+### 11.6 Backend (Supabase) — já plugado
 
-Substitua [plataforma/store/storage.ts](plataforma/store/storage.ts) para retornar `Promise<T>` e chamar API. Atualize o `useEffect` em [PlatformContext.tsx](plataforma/store/PlatformContext.tsx) para `await`. A UI permanece inalterada.
-
-Para **materiais especificamente**, o ganho é grande: troque `Material.dataUrl` por uma URL remota (S3, R2, etc.) e o limite de 5MB cai. Fluxo sugerido: `addMaterial` faz upload, salva só a URL + metadados; o `<a download>` na tela do aluno continua funcionando sem mudança.
+O backend real **já está integrado** (§6, §6.1, §6.3). Pontos de extensão:
+- **Schema**: edite [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql) e rode no SQL Editor. Os tipos do app estão em [types.ts](plataforma/types.ts); o mapeamento row↔tipo em [plataforma/supabase/mappers.ts](plataforma/supabase/mappers.ts).
+- **Nova entidade**: crie a tabela + RLS no SQL, adicione o tipo, mappers `rowToX`/`xToRow` (lembre: **não** envie `created_at` nos upserts), e ações no [PlatformContext.tsx](plataforma/store/PlatformContext.tsx) seguindo o padrão optimista + `write()`.
+- **Autorizar professor**: `insert into teacher_emails (email) values ('...')` no SQL Editor.
+- **Config local**: `.env.local` (ou `.env`) com `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY`. O app **só** usa a publishable key; a secret key nunca entra no front (RLS é a barreira).
 
 ### 11.7 NÃO fazer
 
@@ -395,13 +418,13 @@ Para **materiais especificamente**, o ganho é grande: troque `Material.dataUrl`
 
 ## 12. Pontos de atenção / dívidas conhecidas
 
-- **`window.location.href` para navegação em DeckOverview** (após remover deck) — funcional mas full reload. Trocar por `router.push` se causar problemas.
-- **Sem testes automatizados.** Build é a única gate.
-- **Login persiste no navegador** — em produção troque para cookies HTTP-only assinados, refresh tokens.
+- **Sem testes automatizados.** Build (`npx next build`) é a única gate de CI. (Os fluxos de dados/RLS foram validados manualmente via REST API contra o Supabase.)
+- **Sessão no client (supabase-js)** — guardada em localStorage pelo próprio supabase-js. Para hardening, considerar cookies SSR (`@supabase/ssr`) + middleware; hoje é tudo client-side.
+- **Escrita optimista sem realtime** — em erro de rede, `write()` recarrega a entidade do servidor; não há sync entre abas/dispositivos em tempo real. Suficiente p/ 1 professor + poucos alunos.
+- **Limpeza de Storage depende do app** — remover seção/arquivo apaga o objeto via `.remove()` no `PlatformContext`; se uma escrita falhar no meio, pode sobrar objeto órfão no bucket (sem GC automático).
 - **Sem i18n** — strings hardcoded em PT-BR. Se for internacionalizar, considerar `next-intl`.
 - **Sem analytics, sem PWA, sem SEO sitemap** — fora do escopo atual.
 - **Não há paginação** em listas de materiais/cartas — assume volume baixo (dezenas). Para centenas+, considerar virtualização.
-- **Materiais em base64/localStorage** — limite de ~5MB por arquivo e ~5–10MB total por origem. Anexos grandes (vídeo, áudio longo) precisam de backend (§11.6). Não há checagem de quota total — só por arquivo individual.
 - **Vídeos das aulas gravadas por URL** (YouTube/Vimeo/mp4); cartas continuam sendo só texto.
 - **Renomear arquivo usa `window.prompt`** em [TeacherMaterials.tsx](plataforma/screens/teacher/TeacherMaterials.tsx) — funcional, mas mobile dá UX ruim em alguns browsers. Considerar modal próprio se virar dor.
 
@@ -413,12 +436,13 @@ Para **materiais especificamente**, o ganho é grande: troque `Material.dataUrl`
 |---|---|
 | Mudar o número de WhatsApp | [lib/site.ts](lib/site.ts) |
 | Adicionar seção na landing | Criar em [components/](components/), incluir em [app/page.tsx](app/page.tsx) |
-| Pré-popular seções de materiais (seeds) | `materialSections` em [plataforma/store/seeds.ts](plataforma/store/seeds.ts) |
+| Autorizar um e-mail como professor | `insert into teacher_emails ...` no SQL Editor do Supabase |
+| Mudar/alterar o schema do banco | [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql) (rodar no SQL Editor) + mappers em [plataforma/supabase/mappers.ts](plataforma/supabase/mappers.ts) |
 | Aumentar/diminuir limite de upload | `MAX_FILE_BYTES` em [plataforma/screens/teacher/TeacherMaterials.tsx](plataforma/screens/teacher/TeacherMaterials.tsx) |
 | Mudar algoritmo de repetição | [plataforma/scheduler.ts](plataforma/scheduler.ts) |
 | Adicionar nav item na sidebar | `getNav()` em [plataforma/components/Sidebar.tsx](plataforma/components/Sidebar.tsx) + `<PillLink>` em [Topbar.tsx](plataforma/components/Topbar.tsx) |
 | Adicionar campo num formulário | Editor correspondente em [plataforma/components/](plataforma/components/) — adicionar state, Field, validar em `save()` |
-| Adicionar nova role além de aluno/professor | Expandir `Role` em [types.ts](plataforma/types.ts), tratar em `login()`, `AuthGuard`, `Sidebar.getNav`, criar pasta de rotas paralela |
+| Adicionar nova role além de aluno/professor | Expandir `Role` em [types.ts](plataforma/types.ts), ajustar o trigger `handle_new_user` no SQL, tratar em `AuthGuard`, `Sidebar.getNav`, criar pasta de rotas paralela |
 | Mudar tokens de cor | `:root` em [app/globals.css](app/globals.css) (landing) ou `[data-platform]` em [plataforma/styles.css](plataforma/styles.css) |
 | Trocar fonte | [app/layout.tsx](app/layout.tsx) — `next/font/google` |
 | Adicionar ícone novo | [Icon.tsx](plataforma/components/ui/Icon.tsx) — adicionar nome em `IconName` e case correspondente no switch |
@@ -428,7 +452,7 @@ Para **materiais especificamente**, o ganho é grande: troque `Material.dataUrl`
 ## 14. Glossário rápido
 
 - **Seção de materiais (`MaterialSection`)**: agrupamento ordenado de arquivos, criado e nomeado pelo professor (ex.: "Boas-vindas", "Vocabulário essencial"). Substituiu o conceito antigo de "Área de estudo".
-- **Material (`Material`)**: arquivo anexado a uma seção (PDF, áudio, imagem, planilha…). Tem `displayName` (apelido editável) separado do `fileName` (nome original do upload), `mime`, `size` e `dataUrl` (base64).
+- **Material (`Material`)**: arquivo anexado a uma seção (PDF, áudio, imagem, planilha…). Tem `displayName` (apelido editável) separado do `fileName` (nome original do upload), `mime`, `size` e `storagePath` (caminho no bucket `materials` do Supabase Storage).
 - **Checkpoint**: aula gravada na cronologia. Tem ordem, vídeo, descrição.
 - **Deck**: coleção de flashcards. Tem dono (aluno OU professor).
 - **Flashcard / Carta**: par frente/verso com scheduling.
@@ -439,22 +463,24 @@ Para **materiais especificamente**, o ganho é grande: troque `Material.dataUrl`
 
 ## 15. Como verificar visualmente
 
+**Pré-requisito**: Supabase configurado (§2: rodar `0001_init.sql`, cadastrar seu e-mail em `teacher_emails`, ativar Google + desligar confirm email, preencher `.env.local`/`.env`).
+
 1. `npx next dev`
-2. Abrir [http://localhost:3000](http://localhost:3000) — landing
-3. Clicar "Entrar" no navbar — `/plataforma`
-4. Logar como **Professor** com qualquer nome
-5. Ir em **Materiais** → criar uma seção, anexar 2 arquivos (PDF, imagem, planilha — qualquer formato até ~5MB), renomear um deles, reordenar com as setas
-6. Criar uma segunda seção e reordenar as seções entre si
-7. Ir em **Flashcards** → criar um deck, adicionar 3-4 cartas
-8. Sair e logar como **Aluno** (mesmo navegador)
-9. Em **Materiais**, conferir que as seções aparecem na mesma ordem definida pelo professor; clicar em um arquivo → o download começa com o nome editado
-10. Em **Flashcards**, conferir que **só o aluno** vê os decks do aluno (decks do professor não aparecem)
-11. Estudar o deck: clicar nas 3 grades (Errei/Acertei/Fácil) e ver que carta volta apropriadamente
-12. Recarregar a página → estado persiste (localStorage)
-13. Tentar subir um arquivo > 5MB → deve aparecer erro inline na seção, sem quebrar
+2. Abrir [http://localhost:3000](http://localhost:3000) — landing → "Entrar" → `/plataforma`
+3. **Criar conta com o e-mail que você pôs em `teacher_emails`** → deve cair no painel **professor** (sem seletor de perfil; o papel vem do banco)
+4. Ir em **Materiais** → criar uma seção, anexar 2 arquivos (qualquer formato até 50MB), renomear um, reordenar com as setas; criar uma 2ª seção e reordenar as seções
+5. Navegar entre **Painel / Materiais / Aulas / Flashcards** (e apertar F5 em cada) → **não** deve cair no login (regressão da corrida de sessão)
+6. **Aulas** → criar checkpoint (com URL de vídeo), reordenar
+7. **Flashcards** → criar deck + 3-4 cartas; estudar e dar **Acertei** em todas → deve passar por **todas** sem pular (regressão do `FlashcardReviewer`)
+8. Sair; **criar conta com um e-mail fora da allowlist** → deve cair como **aluno**
+9. Em **Materiais**, conferir mesma ordem; baixar um arquivo → download começa com o `displayName` (via signed URL)
+10. Marcar uma aula como assistida; estudar flashcards do aluno (decks do professor **não** aparecem — isolamento por usuário)
+11. **Abrir em outro navegador / aba anônima** e logar com a mesma conta → o conteúdo aparece (prova de que persiste no Supabase, não no localStorage do device)
+12. Tentar subir arquivo > 50MB → erro inline, sem quebrar
+13. **Google**: clicar "Continuar com Google" → consentimento → volta logado (exige o redirect URI do Supabase no Google Console, §10 chk 7)
 
 Para testar mobile: use DevTools → device mode com 320px, 375px, 414px, 768px, 1024px.
 
 ---
 
-Última atualização: 2026-05-21. Ao mexer no sistema, **atualize este arquivo** se mudar algo arquitetural.
+Última atualização: 2026-06-18. Ao mexer no sistema, **atualize este arquivo** se mudar algo arquitetural.

@@ -5,7 +5,7 @@ import { PlatformProvider } from "@/plataforma";
 export const metadata = {
   title: "Plataforma · Reinaldo Montes",
   description:
-    "Plataforma de estudos com áreas, desafios e aulas gravadas em cronologia.",
+    "Plataforma de estudos: materiais para download, aulas gravadas e flashcards com repetição espaçada.",
 };
 
 export default function PlatformLayout({ children }: { children: ReactNode }) {

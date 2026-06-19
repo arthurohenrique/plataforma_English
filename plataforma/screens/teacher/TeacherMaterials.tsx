@@ -8,13 +8,20 @@ import { EmptyState } from "../../components/ui/EmptyState";
 import { Field, TextArea, TextInput } from "../../components/ui/Input";
 import { Icon } from "../../components/ui/Icon";
 import { Tag } from "../../components/ui/Tag";
-import { usePlatform } from "../../store/PlatformContext";
+import { usePlatform, uid } from "../../store/PlatformContext";
+import { getSupabase } from "../../supabase/client";
 import { platformRoutes } from "../../routes";
 import type { MaterialSection } from "../../types";
 import { MaterialsSkeleton } from "../../components/skeletons/MaterialsSkeleton";
-import { formatBytes, fileToDataUrl } from "./materialUtils";
+import { formatBytes } from "./materialUtils";
 
-const MAX_FILE_BYTES = 5 * 1024 * 1024; // 5MB por arquivo (limite prático do localStorage)
+const MAX_FILE_BYTES = 50 * 1024 * 1024; // 50MB por arquivo
+
+/** Caminho seguro no bucket: <sectionId>/<uuid>-<nome-higienizado>. */
+function buildStoragePath(sectionId: string, fileName: string): string {
+  const safe = fileName.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(-80);
+  return `${sectionId}/${uid()}-${safe}`;
+}
 
 export function TeacherMaterials() {
   return (
@@ -233,29 +240,40 @@ function SectionCard({
     if (!files || files.length === 0) return;
     setUploading(true);
     setUploadError(null);
+    const errors: string[] = [];
     try {
+      const supabase = getSupabase();
       for (const file of Array.from(files)) {
         if (file.size > MAX_FILE_BYTES) {
-          setUploadError(
-            `"${file.name}" passa de 5MB. Reduza o arquivo ou divida em partes.`,
-          );
+          errors.push(`"${file.name}" passa de 50MB.`);
           continue;
         }
-        const dataUrl = await fileToDataUrl(file);
+        const storagePath = buildStoragePath(section.id, file.name);
+        const { error } = await supabase.storage
+          .from("materials")
+          .upload(storagePath, file, {
+            contentType: file.type || "application/octet-stream",
+            upsert: false,
+          });
+        if (error) {
+          errors.push(`"${file.name}": ${error.message}`);
+          continue;
+        }
         addMaterial(section.id, {
           displayName: file.name,
           fileName: file.name,
           mime: file.type || "application/octet-stream",
           size: file.size,
-          dataUrl,
+          storagePath,
         });
       }
     } catch {
-      setUploadError("Não consegui ler o arquivo. Tente novamente.");
+      errors.push("Erro inesperado ao enviar. Tente novamente.");
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
+    setUploadError(errors.length ? errors.join(" · ") : null);
   }
 
   return (

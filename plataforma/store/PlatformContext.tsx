@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -23,21 +24,34 @@ import type {
   Role,
 } from "../types";
 import { reschedule } from "../scheduler";
+import { getSupabase, isSupabaseConfigured } from "../supabase/client";
 import {
-  loadAuth,
-  loadContent,
-  saveAuth,
-  saveContent,
-} from "./storage";
-import { SEED_CONTENT } from "./seeds";
+  checkpointToRow,
+  deckToRow,
+  flashcardToRow,
+  materialSectionToRow,
+  materialToRow,
+  rowToCheckpoint,
+  rowToDeck,
+  rowToFlashcard,
+  rowToMaterial,
+  rowToMaterialSection,
+} from "../supabase/mappers";
 import { platformRoutes } from "../routes";
+
+/** Resultado das ações de autenticação para a tela de login. */
+export type AuthResult = { error: string | null; info?: string };
 
 type Ctx = {
   ready: boolean;
   auth: AuthState;
   content: ContentState;
+  configError: string | null;
 
-  login: (username: string, role: Role) => void;
+  // Auth
+  signInWithPassword: (email: string, password: string) => Promise<AuthResult>;
+  signUpWithPassword: (email: string, password: string) => Promise<AuthResult>;
+  signInWithGoogle: () => Promise<AuthResult>;
   logout: () => void;
 
   // Checkpoints
@@ -54,7 +68,13 @@ type Ctx = {
   reorderMaterialSection: (id: string, direction: "up" | "down") => void;
   addMaterial: (
     sectionId: string,
-    file: { displayName: string; fileName: string; mime: string; size: number; dataUrl: string },
+    file: {
+      displayName: string;
+      fileName: string;
+      mime: string;
+      size: number;
+      storagePath: string;
+    },
   ) => void;
   renameMaterial: (id: string, displayName: string) => void;
   removeMaterial: (id: string) => void;
@@ -69,187 +89,507 @@ type Ctx = {
   reviewFlashcard: (id: string, grade: Grade) => void;
   decksByScope: (scope: OwnerScope) => Deck[];
   cardsByDeck: (deckId: string) => Flashcard[];
-
-  resetAllContent: () => void;
 };
 
 const PlatformCtx = createContext<Ctx | null>(null);
 
-function uid(prefix: string) {
-  return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
+const EMPTY_CONTENT: ContentState = {
+  checkpoints: [],
+  watchedCheckpointIds: [],
+  materialSections: [],
+  materials: [],
+  decks: [],
+  flashcards: [],
+};
+
+/** Gera um UUID válido (compatível com as colunas uuid do Postgres). */
+function uid(_prefix?: string) {
+  const c = globalThis.crypto;
+  if (c?.randomUUID) return c.randomUUID();
+  // Fallback p/ contextos não-seguros (HTTP sem TLS, browsers antigos), onde
+  // crypto.randomUUID é indefinido — evita crash ao criar entidades.
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (ch) => {
+    const r = (Math.random() * 16) | 0;
+    const v = ch === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 export function PlatformProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [auth, setAuth] = useState<AuthState>(null);
-  const [content, setContent] = useState<ContentState>(SEED_CONTENT);
+  const [content, setContent] = useState<ContentState>(EMPTY_CONTENT);
+  const [configError, setConfigError] = useState<string | null>(null);
 
-  // Hydrate from localStorage on mount
+  // Refs para ler estado atual dentro de closures assíncronas sem re-criar
+  // os callbacks a cada mudança.
+  const contentRef = useRef(content);
+  const authRef = useRef(auth);
+  // Id do usuário cujo conteúdo já foi carregado — usado para evitar recarga em
+  // refresh de token. Fica no escopo do componente (não dentro do effect) para
+  // que o logout consiga resetá-lo e o re-login do mesmo usuário recarregue.
+  const loadedUserIdRef = useRef<string | null>(null);
   useEffect(() => {
-    setAuth(loadAuth());
-    const stored = loadContent();
-    if (stored) {
-      // Forward-compat: ignore campos legados (questions/attempts) e seed campos novos.
-      setContent({
-        checkpoints: stored.checkpoints ?? SEED_CONTENT.checkpoints,
-        watchedCheckpointIds: stored.watchedCheckpointIds ?? [],
-        materialSections:
-          stored.materialSections ?? SEED_CONTENT.materialSections,
-        materials: stored.materials ?? SEED_CONTENT.materials,
-        decks: stored.decks ?? SEED_CONTENT.decks,
-        flashcards: stored.flashcards ?? SEED_CONTENT.flashcards,
-      });
-    }
-    setReady(true);
-  }, []);
-
-  // Persist content whenever it changes (after hydration)
+    contentRef.current = content;
+  }, [content]);
   useEffect(() => {
-    if (!ready) return;
-    saveContent(content);
-  }, [content, ready]);
+    authRef.current = auth;
+  }, [auth]);
 
-  const login = useCallback(
-    (username: string, role: Role) => {
-      const next: AuthState = { username: username.trim() || "convidado", role };
-      setAuth(next);
-      saveAuth(next);
-      router.push(
-        role === "professor"
-          ? platformRoutes.professor.home
-          : platformRoutes.aluno.home,
-      );
+  // -------------------------------------------------------------------
+  // Carregamento de conteúdo a partir do Supabase
+  // -------------------------------------------------------------------
+  const fetchAllContent = useCallback(
+    async (userId: string): Promise<ContentState> => {
+      const supabase = getSupabase();
+      const [cp, ms, mat, watched, decks] = await Promise.all([
+        // created_at como desempate p/ ordem determinística quando "order" empata.
+        supabase
+          .from("checkpoints")
+          .select("*")
+          .order("order")
+          .order("created_at"),
+        supabase
+          .from("material_sections")
+          .select("*")
+          .order("order")
+          .order("created_at"),
+        supabase
+          .from("materials")
+          .select("*")
+          .order("order")
+          .order("created_at"),
+        supabase
+          .from("watched_checkpoints")
+          .select("checkpoint_id")
+          .eq("user_id", userId),
+        supabase.from("decks").select("*").eq("owner_id", userId),
+      ]);
+
+      const deckRows = decks.data ?? [];
+      const deckIds = deckRows.map((d) => d.id);
+      let cardRows: unknown[] = [];
+      if (deckIds.length) {
+        const fc = await supabase
+          .from("flashcards")
+          .select("*")
+          .in("deck_id", deckIds);
+        cardRows = fc.data ?? [];
+      }
+
+      return {
+        checkpoints: (cp.data ?? []).map(rowToCheckpoint),
+        watchedCheckpointIds: (watched.data ?? []).map(
+          (w: { checkpoint_id: string }) => w.checkpoint_id,
+        ),
+        materialSections: (ms.data ?? []).map(rowToMaterialSection),
+        materials: (mat.data ?? []).map(rowToMaterial),
+        decks: deckRows.map(rowToDeck),
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        flashcards: (cardRows as any[]).map(rowToFlashcard),
+      };
     },
-    [router],
+    [],
   );
 
+  const fetchProfile = useCallback(
+    async (user: { id: string; email?: string }): Promise<AuthState> => {
+      const supabase = getSupabase();
+      const query = () =>
+        supabase
+          .from("profiles")
+          .select("role, display_name")
+          .eq("id", user.id)
+          .maybeSingle();
+
+      let { data } = await query();
+      if (!data) {
+        // O trigger que cria o profile pode não ter rodado ainda logo após o
+        // cadastro — tenta de novo uma vez.
+        await wait(500);
+        data = (await query()).data;
+      }
+
+      const fallbackName = user.email?.split("@")[0] || "aluno";
+      return {
+        userId: user.id,
+        username: data?.display_name || fallbackName,
+        role: data?.role === "professor" ? "professor" : "aluno",
+      };
+    },
+    [],
+  );
+
+  const reload = useCallback(async () => {
+    const a = authRef.current;
+    if (!a) return;
+    try {
+      const next = await fetchAllContent(a.userId);
+      setContent(next);
+    } catch (e) {
+      console.error("[platform] falha ao recarregar conteúdo", e);
+    }
+  }, [fetchAllContent]);
+
+  // Persiste uma operação; em caso de erro, ressincroniza do servidor.
+  const write = useCallback(
+    async (
+      work: () => PromiseLike<{ error: unknown } | { error: unknown }[]>,
+    ) => {
+      try {
+        const res = await work();
+        const list = Array.isArray(res) ? res : [res];
+        const err = list.find((r) => r && r.error)?.error;
+        if (err) throw err;
+      } catch (e) {
+        console.error("[platform] erro ao salvar — recarregando do servidor", e);
+        await reload();
+      }
+    },
+    [reload],
+  );
+
+  // -------------------------------------------------------------------
+  // Auth: assina mudanças de sessão e carrega profile + conteúdo
+  // -------------------------------------------------------------------
+  useEffect(() => {
+    if (!isSupabaseConfigured) {
+      setConfigError(
+        "Supabase não configurado. Preencha NEXT_PUBLIC_SUPABASE_URL e " +
+          "NEXT_PUBLIC_SUPABASE_ANON_KEY em .env.local.",
+      );
+      setReady(true);
+      return;
+    }
+
+    let active = true;
+    const supabase = getSupabase();
+
+    async function handleSession(
+      session: { user: { id: string; email?: string } } | null,
+    ) {
+      if (!active) return;
+      const user = session?.user ?? null;
+
+      if (!user) {
+        loadedUserIdRef.current = null;
+        setAuth(null);
+        setContent(EMPTY_CONTENT);
+        setReady(true);
+        return;
+      }
+
+      if (loadedUserIdRef.current === user.id) {
+        // Mesma sessão (ex.: refresh de token) — nada a recarregar.
+        setReady(true);
+        return;
+      }
+
+      loadedUserIdRef.current = user.id;
+      setReady(false);
+      try {
+        const profile = await fetchProfile(user);
+        if (!active) return;
+        setAuth(profile);
+        const c = await fetchAllContent(user.id);
+        if (!active) return;
+        setContent(c);
+      } catch (e) {
+        console.error("[platform] erro ao carregar sessão", e);
+      } finally {
+        if (active) setReady(true);
+      }
+    }
+
+    // Semeia o estado a partir da sessão persistida — fonte confiável que
+    // espera o storage/refresh resolver (ao contrário do evento INITIAL_SESSION,
+    // que pode chegar com null antes de o storage carregar e derrubar a sessão).
+    void supabase.auth.getSession().then(({ data }) => {
+      void handleSession(
+        data.session as { user: { id: string; email?: string } } | null,
+      );
+    });
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      // O INITIAL_SESSION com sessão é redundante (getSession acima já semeia),
+      // mas o INITIAL_SESSION *null* é o transitório que derrubava o usuário pro
+      // login — então ignoramos só esse caso. Eventos com sessão (SIGNED_IN
+      // pós-OAuth, refresh) seguem sendo tratados.
+      if (event === "INITIAL_SESSION" && !session) return;
+      // Adiar para fora do callback evita deadlocks do supabase-js ao chamar
+      // outras funções do client de dentro do listener.
+      setTimeout(() => {
+        void handleSession(
+          session as { user: { id: string; email?: string } } | null,
+        );
+      }, 0);
+    });
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [fetchAllContent, fetchProfile]);
+
+  // -------------------------------------------------------------------
+  // Ações de autenticação
+  // -------------------------------------------------------------------
+  const signInWithPassword = useCallback(
+    async (email: string, password: string): Promise<AuthResult> => {
+      try {
+        const supabase = getSupabase();
+        const { error } = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+        return { error: error ? error.message : null };
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : "Erro inesperado." };
+      }
+    },
+    [],
+  );
+
+  const signUpWithPassword = useCallback(
+    async (email: string, password: string): Promise<AuthResult> => {
+      try {
+        const supabase = getSupabase();
+        const { data, error } = await supabase.auth.signUp({
+          email: email.trim(),
+          password,
+        });
+        if (error) return { error: error.message };
+        // Com confirmação de e-mail desligada, já vem sessão e o
+        // onAuthStateChange cuida do redirect. Se vier sem sessão, é porque a
+        // confirmação está ativa no dashboard.
+        if (!data.session) {
+          return {
+            error: null,
+            info: "Conta criada. Verifique seu e-mail para ativar o acesso.",
+          };
+        }
+        return { error: null };
+      } catch (e) {
+        return { error: e instanceof Error ? e.message : "Erro inesperado." };
+      }
+    },
+    [],
+  );
+
+  const signInWithGoogle = useCallback(async (): Promise<AuthResult> => {
+    try {
+      const supabase = getSupabase();
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: `${window.location.origin}/plataforma` },
+      });
+      return { error: error ? error.message : null };
+    } catch (e) {
+      return { error: e instanceof Error ? e.message : "Erro inesperado." };
+    }
+  }, []);
+
   const logout = useCallback(() => {
+    // Reseta o id carregado para que um re-login (inclusive do mesmo usuário)
+    // recarregue o conteúdo em vez de cair no early-return de "mesma sessão".
+    loadedUserIdRef.current = null;
+    void getSupabase()
+      .auth.signOut()
+      .catch((e) => console.error("[platform] erro ao sair", e));
     setAuth(null);
-    saveAuth(null);
+    setContent(EMPTY_CONTENT);
     router.push(platformRoutes.login);
   }, [router]);
 
-  const upsertCheckpoint = useCallback((c: Checkpoint) => {
-    setContent((prev) => {
+  // -------------------------------------------------------------------
+  // Checkpoints
+  // -------------------------------------------------------------------
+  const upsertCheckpoint = useCallback(
+    (c: Checkpoint) => {
+      const prev = contentRef.current;
       const exists = prev.checkpoints.some((x) => x.id === c.id);
-      const checkpoints = exists
-        ? prev.checkpoints.map((x) => (x.id === c.id ? c : x))
-        : [
-            ...prev.checkpoints,
-            {
-              ...c,
-              id: c.id || uid("c"),
-              order: c.order ?? prev.checkpoints.length,
-            },
-          ];
-      checkpoints.sort((a, b) => a.order - b.order);
-      checkpoints.forEach((cp, i) => (cp.order = i));
-      return { ...prev, checkpoints };
-    });
-  }, []);
+      const incoming: Checkpoint = exists
+        ? c
+        : { ...c, id: c.id || uid(), order: c.order ?? prev.checkpoints.length };
+      let checkpoints = exists
+        ? prev.checkpoints.map((x) => (x.id === c.id ? incoming : x))
+        : [...prev.checkpoints, incoming];
+      checkpoints = checkpoints
+        .sort((a, b) => a.order - b.order)
+        .map((cp, i) => ({ ...cp, order: i }));
+      setContent({ ...prev, checkpoints });
+      write(() =>
+        getSupabase()
+          .from("checkpoints")
+          .upsert(checkpoints.map(checkpointToRow)),
+      );
+    },
+    [write],
+  );
 
-  const removeCheckpoint = useCallback((id: string) => {
-    setContent((prev) => {
+  const removeCheckpoint = useCallback(
+    (id: string) => {
+      const prev = contentRef.current;
       const checkpoints = prev.checkpoints
         .filter((c) => c.id !== id)
         .sort((a, b) => a.order - b.order)
         .map((c, i) => ({ ...c, order: i }));
-      return {
+      setContent({
         ...prev,
         checkpoints,
         watchedCheckpointIds: prev.watchedCheckpointIds.filter((x) => x !== id),
-      };
-    });
-  }, []);
+      });
+      write(async () => {
+        const del = await getSupabase()
+          .from("checkpoints")
+          .delete()
+          .eq("id", id);
+        if (del.error) return del;
+        return getSupabase()
+          .from("checkpoints")
+          .upsert(checkpoints.map(checkpointToRow));
+      });
+    },
+    [write],
+  );
 
   const reorderCheckpoint = useCallback(
     (id: string, direction: "up" | "down") => {
-      setContent((prev) => {
-        const sorted = [...prev.checkpoints].sort((a, b) => a.order - b.order);
-        const idx = sorted.findIndex((c) => c.id === id);
-        if (idx === -1) return prev;
-        const swap = direction === "up" ? idx - 1 : idx + 1;
-        if (swap < 0 || swap >= sorted.length) return prev;
-        [sorted[idx], sorted[swap]] = [sorted[swap], sorted[idx]];
-        sorted.forEach((c, i) => (c.order = i));
-        return { ...prev, checkpoints: sorted };
-      });
+      const prev = contentRef.current;
+      const sorted = [...prev.checkpoints].sort((a, b) => a.order - b.order);
+      const idx = sorted.findIndex((c) => c.id === id);
+      if (idx === -1) return;
+      const swap = direction === "up" ? idx - 1 : idx + 1;
+      if (swap < 0 || swap >= sorted.length) return;
+      [sorted[idx], sorted[swap]] = [sorted[swap], sorted[idx]];
+      const checkpoints = sorted.map((c, i) => ({ ...c, order: i }));
+      setContent({ ...prev, checkpoints });
+      write(() =>
+        getSupabase()
+          .from("checkpoints")
+          .upsert(checkpoints.map(checkpointToRow)),
+      );
     },
-    [],
+    [write],
   );
 
-  const markCheckpointWatched = useCallback((id: string) => {
-    setContent((prev) => {
-      if (prev.watchedCheckpointIds.includes(id)) return prev;
-      return {
+  const markCheckpointWatched = useCallback(
+    (id: string) => {
+      const a = authRef.current;
+      if (!a) return;
+      const prev = contentRef.current;
+      if (prev.watchedCheckpointIds.includes(id)) return;
+      setContent({
         ...prev,
         watchedCheckpointIds: [...prev.watchedCheckpointIds, id],
-      };
-    });
-  }, []);
+      });
+      write(() =>
+        getSupabase()
+          .from("watched_checkpoints")
+          .upsert(
+            { user_id: a.userId, checkpoint_id: id },
+            { onConflict: "user_id,checkpoint_id", ignoreDuplicates: true },
+          ),
+      );
+    },
+    [write],
+  );
 
-  // ---------------------------------------------------------------------
+  // -------------------------------------------------------------------
   // Material sections
-  // ---------------------------------------------------------------------
-
-  const upsertMaterialSection = useCallback((section: MaterialSection) => {
-    setContent((prev) => {
+  // -------------------------------------------------------------------
+  const upsertMaterialSection = useCallback(
+    (section: MaterialSection) => {
+      const prev = contentRef.current;
       const exists = prev.materialSections.some((s) => s.id === section.id);
-      const list = exists
+      const incoming: MaterialSection = exists
+        ? section
+        : {
+            ...section,
+            id: section.id || uid(),
+            order: section.order ?? prev.materialSections.length,
+          };
+      let list = exists
         ? prev.materialSections.map((s) =>
-            s.id === section.id ? section : s,
+            s.id === section.id ? incoming : s,
           )
-        : [
-            ...prev.materialSections,
-            {
-              ...section,
-              id: section.id || uid("ms"),
-              order: section.order ?? prev.materialSections.length,
-            },
-          ];
-      list.sort((a, b) => a.order - b.order);
-      list.forEach((s, i) => (s.order = i));
-      return { ...prev, materialSections: list };
-    });
-  }, []);
+        : [...prev.materialSections, incoming];
+      list = list
+        .sort((a, b) => a.order - b.order)
+        .map((s, i) => ({ ...s, order: i }));
+      setContent({ ...prev, materialSections: list });
+      write(() =>
+        getSupabase()
+          .from("material_sections")
+          .upsert(list.map(materialSectionToRow)),
+      );
+    },
+    [write],
+  );
 
-  const removeMaterialSection = useCallback((id: string) => {
-    setContent((prev) => {
+  const removeMaterialSection = useCallback(
+    (id: string) => {
+      const prev = contentRef.current;
+      const paths = prev.materials
+        .filter((m) => m.sectionId === id)
+        .map((m) => m.storagePath)
+        .filter(Boolean);
       const sections = prev.materialSections
         .filter((s) => s.id !== id)
         .sort((a, b) => a.order - b.order)
         .map((s, i) => ({ ...s, order: i }));
-      return {
+      setContent({
         ...prev,
         materialSections: sections,
         materials: prev.materials.filter((m) => m.sectionId !== id),
-      };
-    });
-  }, []);
+      });
+      write(async () => {
+        if (paths.length) {
+          await getSupabase().storage.from("materials").remove(paths);
+        }
+        // FK on delete cascade remove os materials no banco.
+        const del = await getSupabase()
+          .from("material_sections")
+          .delete()
+          .eq("id", id);
+        if (del.error) return del;
+        return getSupabase()
+          .from("material_sections")
+          .upsert(sections.map(materialSectionToRow));
+      });
+    },
+    [write],
+  );
 
   const reorderMaterialSection = useCallback(
     (id: string, direction: "up" | "down") => {
-      setContent((prev) => {
-        const sorted = [...prev.materialSections].sort(
-          (a, b) => a.order - b.order,
-        );
-        const idx = sorted.findIndex((s) => s.id === id);
-        if (idx === -1) return prev;
-        const swap = direction === "up" ? idx - 1 : idx + 1;
-        if (swap < 0 || swap >= sorted.length) return prev;
-        [sorted[idx], sorted[swap]] = [sorted[swap], sorted[idx]];
-        sorted.forEach((s, i) => (s.order = i));
-        return { ...prev, materialSections: sorted };
-      });
+      const prev = contentRef.current;
+      const sorted = [...prev.materialSections].sort(
+        (a, b) => a.order - b.order,
+      );
+      const idx = sorted.findIndex((s) => s.id === id);
+      if (idx === -1) return;
+      const swap = direction === "up" ? idx - 1 : idx + 1;
+      if (swap < 0 || swap >= sorted.length) return;
+      [sorted[idx], sorted[swap]] = [sorted[swap], sorted[idx]];
+      const list = sorted.map((s, i) => ({ ...s, order: i }));
+      setContent({ ...prev, materialSections: list });
+      write(() =>
+        getSupabase()
+          .from("material_sections")
+          .upsert(list.map(materialSectionToRow)),
+      );
     },
-    [],
+    [write],
   );
 
-  // ---------------------------------------------------------------------
-  // Materials (files)
-  // ---------------------------------------------------------------------
-
+  // -------------------------------------------------------------------
+  // Materials (arquivos) — o upload ao Storage é feito na tela; aqui só
+  // registramos a linha com o storagePath resultante.
+  // -------------------------------------------------------------------
   const addMaterial = useCallback(
     (
       sectionId: string,
@@ -258,80 +598,108 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
         fileName: string;
         mime: string;
         size: number;
-        dataUrl: string;
+        storagePath: string;
       },
     ) => {
-      setContent((prev) => {
-        const ordersInSection = prev.materials.filter(
-          (m) => m.sectionId === sectionId,
-        );
-        const nextOrder = ordersInSection.length;
-        const material: Material = {
-          id: uid("mat"),
-          sectionId,
-          displayName: file.displayName.trim() || file.fileName,
-          fileName: file.fileName,
-          mime: file.mime,
-          size: file.size,
-          dataUrl: file.dataUrl,
-          order: nextOrder,
-          createdAt: Date.now(),
-        };
-        return { ...prev, materials: [...prev.materials, material] };
-      });
+      const prev = contentRef.current;
+      const nextOrder = prev.materials.filter(
+        (m) => m.sectionId === sectionId,
+      ).length;
+      const material: Material = {
+        id: uid(),
+        sectionId,
+        displayName: file.displayName.trim() || file.fileName,
+        fileName: file.fileName,
+        mime: file.mime,
+        size: file.size,
+        storagePath: file.storagePath,
+        order: nextOrder,
+        createdAt: Date.now(),
+      };
+      setContent({ ...prev, materials: [...prev.materials, material] });
+      write(() =>
+        getSupabase().from("materials").insert(materialToRow(material)),
+      );
     },
-    [],
+    [write],
   );
 
-  const renameMaterial = useCallback((id: string, displayName: string) => {
-    const next = displayName.trim();
-    if (!next) return;
-    setContent((prev) => ({
-      ...prev,
-      materials: prev.materials.map((m) =>
-        m.id === id ? { ...m, displayName: next } : m,
-      ),
-    }));
-  }, []);
+  const renameMaterial = useCallback(
+    (id: string, displayName: string) => {
+      const next = displayName.trim();
+      if (!next) return;
+      const prev = contentRef.current;
+      setContent({
+        ...prev,
+        materials: prev.materials.map((m) =>
+          m.id === id ? { ...m, displayName: next } : m,
+        ),
+      });
+      write(() =>
+        getSupabase()
+          .from("materials")
+          .update({ display_name: next })
+          .eq("id", id),
+      );
+    },
+    [write],
+  );
 
-  const removeMaterial = useCallback((id: string) => {
-    setContent((prev) => {
+  const removeMaterial = useCallback(
+    (id: string) => {
+      const prev = contentRef.current;
       const target = prev.materials.find((m) => m.id === id);
-      if (!target) return prev;
+      if (!target) return;
       const remaining = prev.materials.filter((m) => m.id !== id);
-      // Renumera ordens dentro da seção
       const renumbered = remaining
         .filter((m) => m.sectionId === target.sectionId)
         .sort((a, b) => a.order - b.order)
         .map((m, i) => ({ ...m, order: i }));
-      const others = remaining.filter((m) => m.sectionId !== target.sectionId);
-      return { ...prev, materials: [...others, ...renumbered] };
-    });
-  }, []);
+      const others = remaining.filter(
+        (m) => m.sectionId !== target.sectionId,
+      );
+      setContent({ ...prev, materials: [...others, ...renumbered] });
+      write(async () => {
+        if (target.storagePath) {
+          await getSupabase()
+            .storage.from("materials")
+            .remove([target.storagePath]);
+        }
+        const del = await getSupabase().from("materials").delete().eq("id", id);
+        if (del.error) return del;
+        return getSupabase()
+          .from("materials")
+          .upsert(renumbered.map(materialToRow));
+      });
+    },
+    [write],
+  );
 
   const reorderMaterial = useCallback(
     (id: string, direction: "up" | "down") => {
-      setContent((prev) => {
-        const target = prev.materials.find((m) => m.id === id);
-        if (!target) return prev;
-        const sectionItems = prev.materials
-          .filter((m) => m.sectionId === target.sectionId)
-          .sort((a, b) => a.order - b.order);
-        const idx = sectionItems.findIndex((m) => m.id === id);
-        const swap = direction === "up" ? idx - 1 : idx + 1;
-        if (swap < 0 || swap >= sectionItems.length) return prev;
-        [sectionItems[idx], sectionItems[swap]] = [
-          sectionItems[swap],
-          sectionItems[idx],
-        ];
-        const reordered = sectionItems.map((m, i) => ({ ...m, order: i }));
-        const others = prev.materials.filter(
-          (m) => m.sectionId !== target.sectionId,
-        );
-        return { ...prev, materials: [...others, ...reordered] };
-      });
+      const prev = contentRef.current;
+      const target = prev.materials.find((m) => m.id === id);
+      if (!target) return;
+      const sectionItems = prev.materials
+        .filter((m) => m.sectionId === target.sectionId)
+        .sort((a, b) => a.order - b.order);
+      const idx = sectionItems.findIndex((m) => m.id === id);
+      const swap = direction === "up" ? idx - 1 : idx + 1;
+      if (swap < 0 || swap >= sectionItems.length) return;
+      [sectionItems[idx], sectionItems[swap]] = [
+        sectionItems[swap],
+        sectionItems[idx],
+      ];
+      const reordered = sectionItems.map((m, i) => ({ ...m, order: i }));
+      const others = prev.materials.filter(
+        (m) => m.sectionId !== target.sectionId,
+      );
+      setContent({ ...prev, materials: [...others, ...reordered] });
+      write(() =>
+        getSupabase().from("materials").upsert(reordered.map(materialToRow)),
+      );
     },
-    [],
+    [write],
   );
 
   const materialsBySection = useCallback(
@@ -342,53 +710,87 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
     [content.materials],
   );
 
-  // ---------------------------------------------------------------------
+  // -------------------------------------------------------------------
   // Decks / flashcards
-  // ---------------------------------------------------------------------
-
-  const upsertDeck = useCallback((deck: Deck) => {
-    setContent((prev) => {
+  // -------------------------------------------------------------------
+  const upsertDeck = useCallback(
+    (deck: Deck) => {
+      const a = authRef.current;
+      if (!a) return;
+      const prev = contentRef.current;
       const exists = prev.decks.some((d) => d.id === deck.id);
+      const incoming: Deck = {
+        ...deck,
+        id: deck.id || uid(),
+        ownerId: deck.ownerId || a.userId,
+      };
       const decks = exists
-        ? prev.decks.map((d) => (d.id === deck.id ? deck : d))
-        : [...prev.decks, { ...deck, id: deck.id || uid("d") }];
-      return { ...prev, decks };
-    });
-  }, []);
+        ? prev.decks.map((d) => (d.id === deck.id ? incoming : d))
+        : [...prev.decks, incoming];
+      setContent({ ...prev, decks });
+      write(() => getSupabase().from("decks").upsert(deckToRow(incoming)));
+    },
+    [write],
+  );
 
-  const removeDeck = useCallback((id: string) => {
-    setContent((prev) => ({
-      ...prev,
-      decks: prev.decks.filter((d) => d.id !== id),
-      flashcards: prev.flashcards.filter((c) => c.deckId !== id),
-    }));
-  }, []);
+  const removeDeck = useCallback(
+    (id: string) => {
+      const prev = contentRef.current;
+      setContent({
+        ...prev,
+        decks: prev.decks.filter((d) => d.id !== id),
+        flashcards: prev.flashcards.filter((c) => c.deckId !== id),
+      });
+      // FK on delete cascade remove os flashcards no banco.
+      write(() => getSupabase().from("decks").delete().eq("id", id));
+    },
+    [write],
+  );
 
-  const upsertFlashcard = useCallback((card: Flashcard) => {
-    setContent((prev) => {
+  const upsertFlashcard = useCallback(
+    (card: Flashcard) => {
+      const prev = contentRef.current;
       const exists = prev.flashcards.some((c) => c.id === card.id);
+      const incoming: Flashcard = exists ? card : { ...card, id: card.id || uid() };
       const flashcards = exists
-        ? prev.flashcards.map((c) => (c.id === card.id ? card : c))
-        : [...prev.flashcards, { ...card, id: card.id || uid("fc") }];
-      return { ...prev, flashcards };
-    });
-  }, []);
+        ? prev.flashcards.map((c) => (c.id === card.id ? incoming : c))
+        : [...prev.flashcards, incoming];
+      setContent({ ...prev, flashcards });
+      write(() =>
+        getSupabase().from("flashcards").upsert(flashcardToRow(incoming)),
+      );
+    },
+    [write],
+  );
 
-  const removeFlashcard = useCallback((id: string) => {
-    setContent((prev) => ({
-      ...prev,
-      flashcards: prev.flashcards.filter((c) => c.id !== id),
-    }));
-  }, []);
+  const removeFlashcard = useCallback(
+    (id: string) => {
+      const prev = contentRef.current;
+      setContent({
+        ...prev,
+        flashcards: prev.flashcards.filter((c) => c.id !== id),
+      });
+      write(() => getSupabase().from("flashcards").delete().eq("id", id));
+    },
+    [write],
+  );
 
-  const reviewFlashcard = useCallback((id: string, grade: Grade) => {
-    setContent((prev) => ({
-      ...prev,
-      flashcards: prev.flashcards.map((c) =>
-        c.id === id ? reschedule(c, grade) : c,
-      ),
-    }));
-  }, []);
+  const reviewFlashcard = useCallback(
+    (id: string, grade: Grade) => {
+      const prev = contentRef.current;
+      const card = prev.flashcards.find((c) => c.id === id);
+      if (!card) return;
+      const updated = reschedule(card, grade);
+      setContent({
+        ...prev,
+        flashcards: prev.flashcards.map((c) => (c.id === id ? updated : c)),
+      });
+      write(() =>
+        getSupabase().from("flashcards").upsert(flashcardToRow(updated)),
+      );
+    },
+    [write],
+  );
 
   const decksByScope = useCallback(
     (scope: OwnerScope): Deck[] =>
@@ -404,16 +806,15 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
     [content.flashcards],
   );
 
-  const resetAllContent = useCallback(() => {
-    setContent(SEED_CONTENT);
-  }, []);
-
   const value = useMemo<Ctx>(
     () => ({
       ready,
       auth,
       content,
-      login,
+      configError,
+      signInWithPassword,
+      signUpWithPassword,
+      signInWithGoogle,
       logout,
       upsertCheckpoint,
       removeCheckpoint,
@@ -434,13 +835,15 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
       reviewFlashcard,
       decksByScope,
       cardsByDeck,
-      resetAllContent,
     }),
     [
       ready,
       auth,
       content,
-      login,
+      configError,
+      signInWithPassword,
+      signUpWithPassword,
+      signInWithGoogle,
       logout,
       upsertCheckpoint,
       removeCheckpoint,
@@ -461,7 +864,6 @@ export function PlatformProvider({ children }: { children: ReactNode }) {
       reviewFlashcard,
       decksByScope,
       cardsByDeck,
-      resetAllContent,
     ],
   );
 

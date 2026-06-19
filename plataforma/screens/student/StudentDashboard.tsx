@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { usePlatform } from "../../store/PlatformContext";
 import { PlatformShell } from "../../components/PlatformShell";
 import { AuthGuard } from "../../components/AuthGuard";
@@ -147,7 +148,7 @@ function ShortcutCard({
   tags?: React.ReactNode;
 }) {
   return (
-    <a
+    <Link
       href={href}
       className="mt-4 block p-card p-5 sm:p-7 lg:p-8 transition-all hover:-translate-y-[2px] hover:shadow-[0_20px_40px_-20px_rgba(10,37,64,0.18)]"
     >
@@ -170,6 +171,6 @@ function ShortcutCard({
           <Icon name="chevron-right" size={18} />
         </span>
       </div>
-    </a>
+    </Link>
   );
 }

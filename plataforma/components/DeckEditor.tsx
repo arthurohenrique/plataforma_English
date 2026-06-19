@@ -34,7 +34,7 @@ export function DeckEditor({
     const deck: Deck = {
       id: existing?.id || uid("d"),
       ownerScope: scope,
-      ownerUsername: existing?.ownerUsername || auth?.username || "Anônimo",
+      ownerId: existing?.ownerId || auth?.userId || "",
       name: name.trim(),
       description: description.trim(),
       accent,

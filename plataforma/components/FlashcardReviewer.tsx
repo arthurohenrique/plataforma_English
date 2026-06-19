@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { Flashcard, Grade } from "../types";
 import { usePlatform } from "../store/PlatformContext";
 import { dueCards, previewNextInterval } from "../scheduler";
@@ -16,12 +16,15 @@ type Props = {
 export function FlashcardReviewer({ cards, onDone }: Props) {
   const { reviewFlashcard } = usePlatform();
 
-  const queue = useMemo(() => dueCards(cards).map((c) => c.id), [cards]);
+  // Snapshot the due-card order ONCE at mount. Grading mutates each card's
+  // dueAt (good/easy push it into the future), which would shrink/reorder a
+  // derived list and make `position` skip or repeat cards. Freezing the queue
+  // means each due card is reviewed exactly once this session; the card data
+  // itself is still read fresh from `cards` below so previews stay in sync.
+  const [queue] = useState(() => dueCards(cards).map((c) => c.id));
   const [position, setPosition] = useState(0);
   const [revealed, setRevealed] = useState(false);
 
-  // Resolve the current card from the latest "cards" prop so previews stay
-  // in sync as the store mutates.
   const currentId = queue[position];
   const current = cards.find((c) => c.id === currentId);
 

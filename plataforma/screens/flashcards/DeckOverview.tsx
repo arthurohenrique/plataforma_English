@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { AuthGuard } from "../../components/AuthGuard";
 import { PlatformShell } from "../../components/PlatformShell";
@@ -29,6 +29,7 @@ export function DeckOverview({ scope }: { scope: OwnerScope }) {
 
 function Inner({ scope }: { scope: OwnerScope }) {
   const params = useParams<{ deckId: string }>();
+  const router = useRouter();
   const deckId = params?.deckId as string;
   const { content, cardsByDeck, removeDeck } = usePlatform();
   const [editing, setEditing] = useState(false);
@@ -154,7 +155,7 @@ function Inner({ scope }: { scope: OwnerScope }) {
                     )
                   ) {
                     removeDeck(deck.id);
-                    window.location.href = routes.flashcards;
+                    router.push(routes.flashcards);
                   }
                 }}
               >

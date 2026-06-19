@@ -1,10 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { usePlatform } from "../../store/PlatformContext";
 import { AuthGuard } from "../../components/AuthGuard";
 import { PlatformShell } from "../../components/PlatformShell";
 import { Tag } from "../../components/ui/Tag";
-import { Button } from "../../components/ui/Button";
 import { Icon, type IconName } from "../../components/ui/Icon";
 import { platformRoutes } from "../../routes";
 import { DashboardSkeleton } from "../../components/skeletons/DashboardSkeleton";
@@ -24,8 +24,7 @@ export function TeacherDashboard() {
 }
 
 function Inner() {
-  const { auth, content, resetAllContent, decksByScope, cardsByDeck } =
-    usePlatform();
+  const { auth, content, decksByScope, cardsByDeck } = usePlatform();
 
   const totalMaterials = content.materials.length;
   const totalSections = content.materialSections.length;
@@ -53,23 +52,6 @@ function Inner() {
             gravadas e mantenha seus decks de flashcards.
           </p>
         </div>
-
-        <Button
-          variant="ghost"
-          size="sm"
-          className="self-start lg:self-end"
-          onClick={() => {
-            if (
-              confirm(
-                "Restaurar conteúdo de exemplo? Isso substitui o que você criou neste navegador.",
-              )
-            ) {
-              resetAllContent();
-            }
-          }}
-        >
-          Restaurar seeds
-        </Button>
       </header>
 
       <section className="mt-6 sm:mt-8 grid grid-cols-3 gap-2 sm:gap-3">
@@ -164,7 +146,7 @@ function ShortcutCard({
   tags?: React.ReactNode;
 }) {
   return (
-    <a
+    <Link
       href={href}
       className="mt-4 block p-card p-5 sm:p-7 lg:p-8 transition-all hover:-translate-y-[2px] hover:shadow-[0_20px_40px_-20px_rgba(10,37,64,0.18)]"
     >
@@ -187,6 +169,6 @@ function ShortcutCard({
           <Icon name="chevron-right" size={18} />
         </span>
       </div>
-    </a>
+    </Link>
   );
 }

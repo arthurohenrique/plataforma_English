@@ -6,10 +6,13 @@ import { PlatformShell } from "../../components/PlatformShell";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Icon } from "../../components/ui/Icon";
 import { Tag } from "../../components/ui/Tag";
+import { useState } from "react";
 import { usePlatform } from "../../store/PlatformContext";
+import { getSupabase } from "../../supabase/client";
 import { platformRoutes } from "../../routes";
 import { MaterialsSkeleton } from "../../components/skeletons/MaterialsSkeleton";
 import { formatBytes } from "../teacher/materialUtils";
+import type { Material } from "../../types";
 
 export function StudentMaterials() {
   return (
@@ -26,6 +29,29 @@ export function StudentMaterials() {
 
 function Inner() {
   const { content, materialsBySection } = usePlatform();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function download(m: Material) {
+    setError(null);
+    setDownloadingId(m.id);
+    try {
+      const { data, error } = await getSupabase()
+        .storage.from("materials")
+        .createSignedUrl(m.storagePath, 60, { download: m.displayName });
+      if (error || !data) throw error ?? new Error("Falha ao gerar link.");
+      const a = document.createElement("a");
+      a.href = data.signedUrl;
+      a.rel = "noopener";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch {
+      setError("Não consegui baixar este arquivo. Tente novamente.");
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   const sections = useMemo(
     () =>
@@ -56,6 +82,9 @@ function Inner() {
             {totalFiles} {totalFiles === 1 ? "arquivo" : "arquivos"}
           </Tag>
         </div>
+        {error && (
+          <p className="mt-4 text-[13px] text-[color:var(--p-accent)]">{error}</p>
+        )}
       </header>
 
       <section className="mt-8 sm:mt-10 space-y-4 sm:space-y-5">
@@ -97,10 +126,11 @@ function Inner() {
                   <ul className="mt-5 grid gap-2">
                     {items.map((m) => (
                       <li key={m.id}>
-                        <a
-                          href={m.dataUrl}
-                          download={m.displayName}
-                          className="flex items-center gap-3 rounded-2xl border border-[color:var(--p-hairline)] bg-white px-3 sm:px-4 py-3 transition-all hover:-translate-y-[1px] hover:shadow-[0_12px_24px_-16px_rgba(10,37,64,0.18)]"
+                        <button
+                          type="button"
+                          onClick={() => download(m)}
+                          disabled={downloadingId === m.id}
+                          className="flex w-full text-left items-center gap-3 rounded-2xl border border-[color:var(--p-hairline)] bg-white px-3 sm:px-4 py-3 transition-all hover:-translate-y-[1px] hover:shadow-[0_12px_24px_-16px_rgba(10,37,64,0.18)] disabled:opacity-60 disabled:pointer-events-none"
                         >
                           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[color:var(--p-surface)] text-[color:var(--p-muted)]">
                             <Icon name="document" size={18} />
@@ -116,9 +146,11 @@ function Inner() {
                           </div>
                           <span className="inline-flex items-center gap-1.5 shrink-0 text-[12px] sm:text-[13px] font-medium text-[color:var(--p-accent)]">
                             <Icon name="download" size={16} />
-                            <span className="hidden sm:inline">Baixar</span>
+                            <span className="hidden sm:inline">
+                              {downloadingId === m.id ? "Baixando…" : "Baixar"}
+                            </span>
                           </span>
-                        </a>
+                        </button>
                       </li>
                     ))}
                   </ul>

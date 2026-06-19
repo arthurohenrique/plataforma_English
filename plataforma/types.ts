@@ -1,6 +1,7 @@
 export type Role = "aluno" | "professor";
 
 export type AuthState = {
+  userId: string;
   username: string;
   role: Role;
 } | null;
@@ -18,9 +19,9 @@ export type Checkpoint = {
 // Material library
 // ---------------------------------------------------------------------------
 // O professor cria seções (com ordem definida por ele) e anexa arquivos a cada
-// seção. Cada arquivo carrega seu binário em base64 (dataUrl) para que o aluno
-// possa baixar diretamente sem backend. Por isso há um limite prático de ~5MB
-// por arquivo (localStorage).
+// seção. O binário fica no Supabase Storage (bucket "materials"); o banco
+// guarda apenas o caminho (storagePath) + metadados. O aluno baixa via signed
+// URL gerada na hora.
 
 export type MaterialSection = {
   id: string;
@@ -41,8 +42,8 @@ export type Material = {
   mime: string;
   /** Tamanho em bytes. */
   size: number;
-  /** Data URL base64 do conteúdo do arquivo. */
-  dataUrl: string;
+  /** Caminho do arquivo no bucket "materials" do Supabase Storage. */
+  storagePath: string;
   order: number;
   createdAt: number;
 };
@@ -58,7 +59,8 @@ export type OwnerScope = "aluno" | "professor";
 export type Deck = {
   id: string;
   ownerScope: OwnerScope;
-  ownerUsername: string;
+  /** id do usuário (auth.users) dono do deck. */
+  ownerId: string;
   name: string;
   description: string;
   accent: string;
