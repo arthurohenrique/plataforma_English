@@ -6,18 +6,13 @@
 -- COMO USAR: SQL Editor → cole este arquivo → Run.
 --
 -- O que faz:
---   1. Adiciona a coluna checkpoints.video_path (caminho do vídeo enviado
---      pelo professor no bucket "materials" do Storage).
---   2. Sobe o limite de tamanho do bucket "materials" para 500MB, para
---      comportar vídeos de aula (além de PDFs/áudios).
+--   1. Adiciona a coluna checkpoints.video_path (caminho do vídeo LEGADO
+--      enviado ao bucket "materials" no plano pago). Mantida para não quebrar
+--      aulas antigas; no plano FREE o vídeo novo é link externo (§6.6).
 --
--- OBS: no plano FREE do Supabase o teto global de upload é 50MB e este
--- limite por bucket não tem efeito acima disso; em planos pagos vale até 50GB.
+-- OBS: o limite do bucket é fixado em 50MB pela migração 0003 (teto do plano
+-- FREE). Este arquivo não mexe mais no file_size_limit.
 -- =====================================================================
 
 alter table public.checkpoints
   add column if not exists video_path text not null default '';
-
-update storage.buckets
-  set file_size_limit = 524288000   -- 500MB
-  where id = 'materials' and coalesce(file_size_limit, 0) < 524288000;

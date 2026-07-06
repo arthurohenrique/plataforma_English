@@ -24,13 +24,15 @@ Site institucional de aulas particulares de inglês com **método Oxford** + uma
 | Tipografia | **Inter** via `next/font` | Substituto de SF Pro para o visual Apple |
 | Backend | **Supabase** (Postgres + Auth + Storage) | Banco real multiusuário; acessado direto do client via `@supabase/supabase-js` |
 | Auth | **Supabase Auth** (Google OAuth + e-mail/senha) | Login real; papel (aluno/professor) por allowlist de e-mails |
-| Arquivos | **Supabase Storage** (bucket `materials`, privado) | Upload do professor (materiais **e vídeos das aulas**); download/streaming do aluno por signed URL |
+| Arquivos | **Supabase Storage** (bucket `materials`, privado) | Upload do professor (**materiais**: PDF/áudio/imagem, < 50MB); download do aluno por signed URL. **Vídeo das aulas NÃO fica aqui** — é link externo (§6.6, limite do plano free) |
 | Estado | **React Context** (hidratado do Supabase) | Update otimista local + escrita assíncrona; sem libs externas |
 | Build/run | `npm` | Lockfile padrão |
 
 Node version: testado com Node 22. Dependência runtime principal além de `next/react/react-dom`: `@supabase/supabase-js`.
 
-> **Setup obrigatório do Supabase** (uma vez, fora do código): (1) rodar [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql) **e depois** [0002_checkpoint_video_upload.sql](supabase/migrations/0002_checkpoint_video_upload.sql) no SQL Editor; (2) cadastrar e-mail(s) de professor em `teacher_emails`; (3) no dashboard, ativar provider Google, desligar "Confirm email", e configurar Site URL / Redirect URLs (por ambiente — ver gotcha de produção em §10); (4) preencher `.env` (ver comentários em [.env](.env)) com `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable) — e cadastrar as mesmas na Vercel para produção. A **secret key nunca** vai pro client — o app só usa a publishable; RLS é a barreira de segurança.
+> **Setup obrigatório do Supabase** (uma vez, fora do código): (1) rodar [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql), depois [0002_checkpoint_video_upload.sql](supabase/migrations/0002_checkpoint_video_upload.sql), depois [0003_free_tier_limits.sql](supabase/migrations/0003_free_tier_limits.sql) no SQL Editor (nessa ordem); (2) cadastrar e-mail(s) de professor em `teacher_emails`; (3) no dashboard, ativar provider Google, desligar "Confirm email", e configurar Site URL / Redirect URLs (por ambiente — ver gotcha de produção em §10); (4) preencher `.env` (ver comentários em [.env](.env)) com `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable) — e cadastrar as mesmas na Vercel para produção. A **secret key nunca** vai pro client — o app só usa a publishable; RLS é a barreira de segurança.
+
+> ⚠️ **Plano FREE do Supabase (§6.6, §12)**: o projeto foi montado no plano PRO mas hoje roda no **FREE**. Limites que importam: upload por arquivo **50MB** (teto global — o `file_size_limit` do bucket não vale acima disso), Storage total **1GB**, egress **5GB/mês**, e o projeto **PAUSA após ~7 dias sem uso** (reativa manual no dashboard). Por isso o **vídeo das aulas é link externo** (YouTube/Vimeo), não upload — ver §6.6. Materiais (PDF/áudio/imagem) seguem no Storage, < 50MB.
 
 ---
 
@@ -294,19 +296,18 @@ Para mudar o algoritmo: edite só `scheduler.ts`. As ações do store (`reviewFl
 
 Removido. Com banco real e multiusuário, não há mais "restaurar seeds" — cada usuário começa vazio e cria o próprio conteúdo, persistido no Supabase. Os arquivos `seeds.ts`/`storage.ts` viraram stubs deprecados (mantidos só para não quebrar imports históricos).
 
-### 6.6 Aulas gravadas — vídeo por upload (não por link)
+### 6.6 Aulas gravadas — vídeo por link externo (plano free)
 
-O professor **envia o arquivo de vídeo** da aula (não cola mais um link externo). O `Checkpoint` tem:
+O professor **cola um link do vídeo** da aula (YouTube não listado, Vimeo, ou link direto .mp4/.webm). **Não há mais upload de vídeo** — no plano free do Supabase é inviável (teto 50MB/arquivo, 1GB total, 5GB egress/mês). Hospedar no YouTube é grátis, ilimitado, e não consome nada do Supabase. O `Checkpoint` tem:
 
-- `videoPath?: string` — caminho do vídeo no bucket `materials` do Storage (caminho `checkpoints/<checkpointId>/<uuid>-<nome>`). **Forma atual** de anexar vídeo.
-- `videoUrl: string` — link externo (YouTube/Vimeo/.mp4). **Legado/fallback**: ainda toca para checkpoints antigos, mas o editor não expõe mais o campo.
+- `videoUrl: string` — link externo (YouTube/Vimeo/.mp4). **Forma atual** de anexar vídeo. É o único campo que o editor expõe.
+- `videoPath?: string` — caminho de um vídeo enviado ao Storage no **plano pago (legado)**. Ainda **toca** (e tem prioridade sobre `url`) para aulas antigas, mas o editor **não cria novos** — só oferece um botão "Remover vídeo enviado" que apaga o objeto do Storage e libera o link para tocar.
 
-**Upload**: feito em [CheckpointEditor.tsx](plataforma/components/CheckpointEditor.tsx) (`supabase.storage.from('materials').upload(...)`) **antes** de chamar `upsertCheckpoint`. O id do checkpoint é fixado no mount (`useState(existing?.id || uid("c"))`) para compor o caminho do Storage antes do save. Trocar o vídeo remove o objeto anterior; `removeCheckpoint` (no [PlatformContext.tsx](plataforma/store/PlatformContext.tsx)) apaga o vídeo do Storage junto com a linha.
+**Editor**: [CheckpointEditor.tsx](plataforma/components/CheckpointEditor.tsx) — campo de texto de URL (`videoUrl`). Sem dropzone, sem `MAX_VIDEO_BYTES`. Quando o checkpoint tem `videoPath` legado, mostra um aviso + botão para removê-lo (`supabase.storage.from('materials').remove([path])`). `removeCheckpoint` (no [PlatformContext.tsx](plataforma/store/PlatformContext.tsx)) ainda apaga o vídeo do Storage junto com a linha, para checkpoints legados.
 
-**Player**: [VideoEmbed.tsx](plataforma/components/VideoEmbed.tsx) — quando há `path`, gera uma **signed URL** (1h) e toca no `<video>` nativo; sem `path`, cai no fluxo legado de `url` (embed YouTube/Vimeo, vídeo nativo por extensão, ou link). `path` tem prioridade sobre `url`.
+**Player**: [VideoEmbed.tsx](plataforma/components/VideoEmbed.tsx) — quando há `path` (legado), gera **signed URL** (1h) e toca no `<video>` nativo; sem `path`, usa `url` (embed YouTube/Vimeo, vídeo nativo por extensão, ou link em nova aba). `path` tem prioridade sobre `url` — por isso o botão de remover o vídeo legado.
 
-- **Limite por vídeo**: `MAX_VIDEO_BYTES = 500MB` em [CheckpointEditor.tsx](plataforma/components/CheckpointEditor.tsx).
-- ⚠️ **Plano free do Supabase**: o teto global de upload é **50MB**, independente do `file_size_limit` do bucket. Vídeos maiores exigem plano pago (bucket vale até 50GB). A migração `0002` sobe o `file_size_limit` do bucket `materials` para 500MB.
+> **Voltar a hospedar vídeo no Supabase** (se um dia migrar para plano pago): reverter o editor para o dropzone de upload (histórico do git, checkpoint 8 em §10), subir o `file_size_limit` do bucket `materials`, e reativar `MAX_VIDEO_BYTES`. A coluna `video_path` e o player de `path` já continuam prontos.
 
 ---
 
@@ -385,6 +386,8 @@ Não tem testes hoje. Validação é via:
 
 8. **Vídeo das aulas por upload (jun/2026)** — As aulas gravadas deixaram de receber **link externo** e passaram a aceitar **upload do arquivo de vídeo** (§6.6). O vídeo vai pro mesmo bucket `materials` (caminho `checkpoints/...`), o aluno assiste por **signed URL** no `<video>` nativo. Mudanças: novo campo `Checkpoint.videoPath` (+ coluna `video_path`, mappers); [CheckpointEditor.tsx](plataforma/components/CheckpointEditor.tsx) com dropzone de upload no lugar do campo de URL; [VideoEmbed.tsx](plataforma/components/VideoEmbed.tsx) resolve signed URL quando há `path` (link externo vira fallback legado); `removeCheckpoint` apaga o vídeo do Storage; migração [0002_checkpoint_video_upload.sql](supabase/migrations/0002_checkpoint_video_upload.sql) adiciona a coluna e sobe o `file_size_limit` do bucket p/ 500MB. ⚠️ Plano free do Supabase trava upload em 50MB.
 
+9. **Adaptação ao plano FREE (jul/2026)** — O projeto foi montado no plano PRO mas passou a rodar no **FREE**, onde upload de vídeo de 500MB é inviável (teto global 50MB/arquivo, 1GB total, 5GB egress/mês, pausa após ~7 dias de inatividade). **Vídeo das aulas voltou a ser link externo** (YouTube/Vimeo) — reversão parcial do checkpoint 8. Mudanças: [CheckpointEditor.tsx](plataforma/components/CheckpointEditor.tsx) troca o dropzone de upload por um campo de URL (`videoUrl`), removendo `MAX_VIDEO_BYTES` e o upload ao Storage; mantém um botão para **remover vídeo legado** (`videoPath` de aulas do plano pago, que ainda tocam e têm prioridade). [VideoEmbed.tsx](plataforma/components/VideoEmbed.tsx) **não mudou** (já tocava link e path). Migrações: [0001](supabase/migrations/0001_init.sql) e [0002](supabase/migrations/0002_checkpoint_video_upload.sql) baixadas para `file_size_limit` = 50MB (fresh install); nova [0003_free_tier_limits.sql](supabase/migrations/0003_free_tier_limits.sql) baixa o bucket existente para 50MB. A coluna `video_path` e o player de `path` **permanecem** (aulas legadas + facilita voltar ao upload se migrar p/ plano pago — ver nota no fim de §6.6). Materiais seguem no Storage (< 50MB, já era o limite).
+
 ---
 
 ## 11. Convenções de código — coisas que importam
@@ -442,7 +445,9 @@ O backend real **já está integrado** (§6, §6.1, §6.3). Pontos de extensão:
 - **Sem i18n** — strings hardcoded em PT-BR. Se for internacionalizar, considerar `next-intl`.
 - **Sem analytics, sem PWA, sem SEO sitemap** — fora do escopo atual.
 - **Não há paginação** em listas de materiais/cartas — assume volume baixo (dezenas). Para centenas+, considerar virtualização.
-- **Vídeos das aulas gravadas por upload** (Storage + signed URL; veja §6.6). Links externos (YouTube/Vimeo/mp4) ainda tocam como fallback legado, mas não há mais campo de URL no editor. Cartas continuam sendo só texto. Limite de 500MB por vídeo (efetivo só em plano pago do Supabase — free trava em 50MB).
+- **Plano FREE do Supabase** — o projeto foi montado no PRO e hoje roda no FREE (§6.6). Consequências: (a) vídeo das aulas é **link externo**, não upload; (b) upload de materiais limitado a **50MB**; (c) Storage total **1GB** e egress **5GB/mês** — monitorar no dashboard; (d) o projeto **pausa após ~7 dias sem uso** (reativar manual no dashboard) — se um dia crescer, considerar plano pago ou um ping periódico. Para voltar a hospedar vídeo no Supabase, ver a nota no fim de §6.6.
+- **Vídeos das aulas gravadas por link externo** (YouTube/Vimeo/.mp4; veja §6.6). Vídeos legados que ficaram no Storage (plano pago) ainda tocam via signed URL e têm prioridade — removê-los no editor libera o link. Cartas continuam sendo só texto.
+- **Objeto de vídeo legado órfão** — remover a *aula* (`removeCheckpoint`) apaga o vídeo legado do Storage; mas trocar por link **sem** clicar em "Remover vídeo enviado" deixa o objeto legado no bucket (e ele ainda toca, sobrepondo o link). Documentado no aviso do editor.
 - **Renomear arquivo usa `window.prompt`** em [TeacherMaterials.tsx](plataforma/screens/teacher/TeacherMaterials.tsx) — funcional, mas mobile dá UX ruim em alguns browsers. Considerar modal próprio se virar dor.
 
 ---
@@ -456,7 +461,8 @@ O backend real **já está integrado** (§6, §6.1, §6.3). Pontos de extensão:
 | Autorizar um e-mail como professor | `insert into teacher_emails ...` no SQL Editor do Supabase |
 | Mudar/alterar o schema do banco | [supabase/migrations/0001_init.sql](supabase/migrations/0001_init.sql) (rodar no SQL Editor) + mappers em [plataforma/supabase/mappers.ts](plataforma/supabase/mappers.ts) |
 | Aumentar/diminuir limite de upload de materiais | `MAX_FILE_BYTES` em [plataforma/screens/teacher/TeacherMaterials.tsx](plataforma/screens/teacher/TeacherMaterials.tsx) |
-| Aumentar/diminuir limite de upload de vídeo da aula | `MAX_VIDEO_BYTES` em [plataforma/components/CheckpointEditor.tsx](plataforma/components/CheckpointEditor.tsx) (+ `file_size_limit` do bucket na migração) |
+| Trocar a fonte do vídeo da aula (link externo) | Campo de URL em [plataforma/components/CheckpointEditor.tsx](plataforma/components/CheckpointEditor.tsx); player em [VideoEmbed.tsx](plataforma/components/VideoEmbed.tsx). Voltar a hospedar no Supabase (plano pago): ver nota no fim de §6.6 |
+| Ajustar limite de upload de materiais | `MAX_FILE_BYTES` em [TeacherMaterials.tsx](plataforma/screens/teacher/TeacherMaterials.tsx) + `file_size_limit` do bucket (migração 0003). No plano free o teto real é 50MB (global) |
 | Mudar algoritmo de repetição | [plataforma/scheduler.ts](plataforma/scheduler.ts) |
 | Adicionar nav item na sidebar | `getNav()` em [plataforma/components/Sidebar.tsx](plataforma/components/Sidebar.tsx) + `<PillLink>` em [Topbar.tsx](plataforma/components/Topbar.tsx) |
 | Adicionar campo num formulário | Editor correspondente em [plataforma/components/](plataforma/components/) — adicionar state, Field, validar em `save()` |

@@ -236,16 +236,17 @@ create policy "watched_owner_all" on public.watched_checkpoints
 -- Leitura: qualquer autenticado (download por signed URL).
 -- Escrita: só professor.
 -- =====================================================================
--- file_size_limit: 500MB — comporta vídeos de aulas gravadas além de PDFs/áudios.
--- (No plano free do Supabase o teto global de upload é 50MB; em planos pagos
---  este limite por bucket vale até 50GB.)
+-- file_size_limit: 50MB — teto do plano FREE do Supabase (o teto global de
+-- upload é 50MB independente deste valor). Materiais (PDF/áudio/imagem) cabem;
+-- vídeo das aulas fica FORA do Storage (usa link YouTube/Vimeo — ver §6.6).
+-- Em plano pago dá pra subir isto até 50GB e voltar a hospedar vídeo aqui.
 insert into storage.buckets (id, name, public, file_size_limit)
-values ('materials', 'materials', false, 524288000)
+values ('materials', 'materials', false, 52428800)
 on conflict (id) do nothing;
 
 update storage.buckets
-  set file_size_limit = 524288000
-  where id = 'materials' and coalesce(file_size_limit, 0) < 524288000;
+  set file_size_limit = 52428800
+  where id = 'materials';
 
 drop policy if exists "materials_read_authenticated" on storage.objects;
 create policy "materials_read_authenticated" on storage.objects
