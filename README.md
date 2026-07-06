@@ -1,36 +1,104 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Reinaldo Montes — Plataforma de Inglês
 
-## Getting Started
+Site institucional de aulas particulares de inglês (método Oxford) com uma
+**plataforma de estudos** acoplada: biblioteca de **materiais** para download,
+**aulas gravadas** em cronologia e **flashcards** com repetição espaçada.
 
-First, run the development server:
+O professor publica o conteúdo; os alunos acessam com **login real** (Google ou
+e-mail/senha). O papel professor/aluno vem de uma allowlist de e-mails no banco.
+
+---
+
+## Telas
+
+**Landing**
+
+![Landing](docs/screenshots/landing.png)
+
+**Login da plataforma**
+
+![Login](docs/screenshots/login.png)
+
+<!--
+Prints das telas internas (exigem login) — para adicionar:
+1. Tire o print da tela (painel do professor, materiais, aulas, flashcards).
+2. Salve em docs/screenshots/ (ex.: professor.png, materiais.png, aulas.png).
+3. Referencie aqui:  ![Materiais](docs/screenshots/materiais.png)
+-->
+
+---
+
+## Funcionalidades
+
+- **Login real** — Google OAuth ou e-mail/senha (Supabase Auth). Papel
+  aluno/professor definido por allowlist no banco.
+- **Materiais** — o professor cria seções ordenadas e anexa arquivos
+  (PDF, áudio, imagem, planilha); o aluno baixa direto.
+- **Aulas gravadas** — cronologia de aulas com vídeo (link do YouTube/Vimeo) e
+  marcação de "assistida" por aluno.
+- **Flashcards** — decks privados por usuário com repetição espaçada (SM-2
+  simplificado, 3 botões: errei / acertei / fácil).
+- **Responsivo** — testado de 320px a 1920px+, visual Apple + cores Oxford.
+
+---
+
+## Stack
+
+| Camada | Tecnologia |
+|---|---|
+| Framework | Next.js 16 (App Router, Turbopack) |
+| Linguagem | TypeScript |
+| Estilos | Tailwind v4 |
+| Backend | Supabase (Postgres + Auth + Storage) |
+| Estado | React Context (hidratado do Supabase) |
+| Deploy | Vercel |
+
+---
+
+## Como rodar localmente
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npx next dev -p 3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Para o build de produção (valida TypeScript e rotas):
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npx next build
+```
 
-## Learn More
+---
 
-To learn more about Next.js, take a look at the following resources:
+## Configuração do Supabase (uma vez)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+1. No **SQL Editor** do projeto, rode as migrações **em ordem**:
+   `supabase/migrations/0001_init.sql` → `0002_checkpoint_video_upload.sql` →
+   `0003_free_tier_limits.sql`.
+2. Cadastre o(s) e-mail(s) de professor:
+   ```sql
+   insert into public.teacher_emails (email) values ('professor@exemplo.com');
+   ```
+3. No dashboard: ative o provider **Google**, desligue **Confirm email** e
+   configure **Site URL** / **Redirect URLs**.
+4. Preencha o `.env` (local) e as variáveis na Vercel (produção):
+   ```
+   NEXT_PUBLIC_SUPABASE_URL=...
+   NEXT_PUBLIC_SUPABASE_ANON_KEY=...   # publishable key
+   ```
+   A *secret key* nunca vai para o front — o app só usa a publishable; RLS é a
+   barreira de segurança.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+> **Plano FREE do Supabase**: upload limitado a **50MB por arquivo**, **1GB** de
+> Storage total, **5GB** de egress/mês, e o projeto **pausa após ~7 dias sem
+> uso**. Por isso o **vídeo das aulas é link do YouTube** (não upload). Ao criar
+> a aula, envie o vídeo no YouTube como **"Não listado"** e cole o link.
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Documentação completa
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+O briefing técnico detalhado (arquitetura, modelo de dados, convenções, dívidas
+conhecidas) está em **[CLAUDE.md](CLAUDE.md)**.
